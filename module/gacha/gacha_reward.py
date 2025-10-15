@@ -1,5 +1,5 @@
 from module.base.timer import Timer
-from module.campaign.campaign_status import OCR_COIN
+from module.campaign.campaign_status import CampaignStatus
 from module.combat.assets import GET_SHIP
 from module.exception import ScriptError
 from module.gacha.assets import *
@@ -18,7 +18,7 @@ OCR_BUILD_SUBMIT_COUNT = Digit(BUILD_SUBMIT_COUNT, letter=(255, 247, 247), thres
 OCR_BUILD_SUBMIT_WW_COUNT = Digit(BUILD_SUBMIT_WW_COUNT, letter=(255, 247, 247), threshold=64)
 
 
-class RewardGacha(GachaUI, Retirement):
+class RewardGacha(GachaUI, Retirement, CampaignStatus):
     build_coin_count = 0
     build_cube_count = 0
     build_ticket_count = 0
@@ -299,7 +299,7 @@ class RewardGacha(GachaUI, Retirement):
         self.gacha_flush_queue()
 
         # OCR Gold and Cubes
-        self.build_coin_count = OCR_COIN.ocr(self.device.image)
+        self.build_coin_count = self.get_coin()
         self.build_cube_count = OCR_BUILD_CUBE_COUNT.ocr(self.device.image)
 
         # Transition to appropriate target construction pool

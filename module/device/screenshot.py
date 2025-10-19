@@ -19,9 +19,12 @@ from module.device.method.scrcpy import Scrcpy
 from module.device.method.wsa import WSA
 from module.exception import RequestHumanTakeover, ScriptError
 from module.logger import logger
-
+import base64
 
 class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
+    def __init__(self, screenshot_queue=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.screenshot_queue = screenshot_queue
     _screen_size_checked = False
     _screen_black_checked = False
     _minicap_uninstalled = False
@@ -71,6 +74,11 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
 
             if self.config.Error_SaveError:
                 self.screenshot_deque.append({'time': datetime.now(), 'image': self.image})
+            if self.screenshot_queue is not None and self.image is not None:
+                is_success, buffer = cv2.imencode(".png", self.image)
+                if is_success:
+                    img_base64 = base64.b64encode(buffer).decode("utf-8")
+                    self.screenshot_queue.put(img_base64)
 
             if self.check_screen_size() and self.check_screen_black():
                 break

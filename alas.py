@@ -23,9 +23,10 @@ from module.notify import handle_notify
 class AzurLaneAutoScript:
     stop_event: threading.Event = None
 
-    def __init__(self, config_name='alas'):
+    def __init__(self, config_name='alas', screenshot_queue=None):
         logger.hr('Start', level=0)
         self.config_name = config_name
+        self.screenshot_queue = screenshot_queue
         # Skip first restart
         self.is_first_task = True
         # Failure count of tasks
@@ -48,7 +49,7 @@ class AzurLaneAutoScript:
     def device(self):
         try:
             from module.device.device import Device
-            device = Device(config=self.config)
+            device = Device(config=self.config, screenshot_queue=self.screenshot_queue)
             return device
         except RequestHumanTakeover:
             logger.critical('Request human takeover')

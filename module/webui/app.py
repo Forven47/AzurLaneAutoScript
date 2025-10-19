@@ -147,6 +147,7 @@ class AlasGUI(Frame):
         self.inst_cache = []
         self.load_home = False
         self.af_flag = False
+        self.last_displayed_screenshot_base64 = None
 
     @use_scope("aside", clear=True)
     def set_aside(self) -> None:
@@ -422,6 +423,16 @@ class AlasGUI(Frame):
         put_scope("overview", [put_scope("schedulers"), put_scope("logs")])
 
         with use_scope("schedulers"):
+            if State.last_screenshot_base64 is not None:
+                img_html = f'<img id="screenshot-img" src="data:image/png;base64,{State.last_screenshot_base64}" style="height:100%; width:100%;">'
+                put_scope("image-container", [put_html(img_html)])
+            else:
+                put_scope(
+                    "image-container",
+                    [
+                        put_html('<img id="screenshot-img" src="/static/assets/spa/screen.png" style="height:100%; width:100%;">')
+                    ],
+                )
             put_scope(
                 "scheduler-bar",
                 [
@@ -537,6 +548,7 @@ class AlasGUI(Frame):
         if 'Maa' not in self.ALAS_ARGS:
             self.task_handler.add(self.alas_update_dashboard, 10, True)
         self.task_handler.add(log.put_log(self.alas), 0.25, True)
+        self.task_handler.add(self.update_screenshot_display, 1, True)
 
     def set_dashboard_display(self, b):
         self._log.set_dashboard_display(b)
@@ -780,6 +792,35 @@ class AlasGUI(Frame):
                 self._update_dashboard(num=4, groups_to_display=['Oil', 'Coin', 'Gem', 'Pt'])
             elif self._log.display_dashboard:
                 self._update_dashboard()
+
+    def update_screenshot_display(self):
+        img_base64 = None
+        if hasattr(self, 'alas') and self.alas.alive:
+            try:
+                img_base64 = self.alas.get_latest_screenshot
+            except Exception as e:
+                logger.error(f"从调度器获取截图失败: {e}")
+                with use_scope("image-container", clear=True):
+                    put_text("无法获取实时截图").style("font-size: 1.25rem; color: red; margin: auto;")
+
+        if img_base64 is None and State.last_screenshot_base64 is not None:
+            img_base64 = State.last_screenshot_base64
+
+        if img_base64 is not None and img_base64 != self.last_displayed_screenshot_base64:
+            self.last_displayed_screenshot_base64 = img_base64
+            run_js(f'''
+                var img = document.getElementById("screenshot-img");
+                if (img) {{
+                    img.src = "data:image/png;base64,{img_base64}";
+                }}
+            ''')
+        elif img_base64 is None:
+            run_js('''
+                var img = document.getElementById("screenshot-img");
+                if (img) {{
+                    img.src = "/static/assets/spa/screen.png";
+                }}
+            ''')
 
     @use_scope("content", clear=True)
     def alas_daemon_overview(self, task: str) -> None:

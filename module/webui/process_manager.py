@@ -28,6 +28,7 @@ class ProcessManager:
     def __init__(self, config_name: str = "alas") -> None:
         self.config_name = config_name
         self._renderable_queue: queue.Queue[ConsoleRenderable] = State.manager.Queue()
+        self._screenshot_data_queue: queue.Queue[str] = State.manager.Queue()
         self.renderables: List[ConsoleRenderable] = []
         self.renderables_max_length = 400
         self.renderables_reduce_length = 80
@@ -45,6 +46,7 @@ class ProcessManager:
                     self.config_name,
                     func,
                     self._renderable_queue,
+                    self._screenshot_data_queue,
                     ev,
                 ),
             )
@@ -121,6 +123,26 @@ class ProcessManager:
             else:
                 return 3
 
+    @property
+    def get_latest_screenshot(self):
+        """
+        获取最新的截图数据（Base64编码）。
+        """
+        if self._screenshot_data_queue is None:
+            return None
+
+        latest_screenshot = None
+        while not self._screenshot_data_queue.empty():
+            try:
+                latest_screenshot = self._screenshot_data_queue.get_nowait()
+                State.last_screenshot_base64 = latest_screenshot
+            except queue.Empty:
+                break  # 队列为空
+            except Exception as e:
+                logger.error(f"从截图队列获取数据失败: {e}")
+                break
+        return latest_screenshot
+
     @classmethod
     def get_manager(cls, config_name: str) -> "ProcessManager":
         """
@@ -132,7 +154,7 @@ class ProcessManager:
 
     @staticmethod
     def run_process(
-        config_name, func: str, q: queue.Queue, e: threading.Event = None
+        config_name, func: str, q: queue.Queue, screenshot_q: queue.Queue, e: threading.Event = None
     ) -> None:
         parser = argparse.ArgumentParser()
         parser.add_argument(
@@ -163,7 +185,7 @@ class ProcessManager:
 
                 if e is not None:
                     AzurLaneAutoScript.stop_event = e
-                AzurLaneAutoScript(config_name=config_name).loop()
+                AzurLaneAutoScript(config_name=config_name, screenshot_queue=screenshot_q).loop()
             elif func in get_available_func():
                 from alas import AzurLaneAutoScript
 

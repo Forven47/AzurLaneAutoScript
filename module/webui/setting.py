@@ -59,7 +59,8 @@ class State:
     manager: SyncManager = None
     electron: bool = False
     theme: str = "default"
-
+    last_screenshot_base64: str = None
+    
     @classmethod
     def init(cls):
         cls.manager = multiprocessing.Manager()

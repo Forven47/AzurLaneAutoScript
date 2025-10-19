@@ -44,7 +44,9 @@ def handle_notify(_config: str, **kwargs) -> bool:
                 config["data"]["title"] = kwargs["title"]
             if "content" in kwargs:
                 config["data"]["content"] = kwargs["content"]
-
+                if "data" in config and "message" in config["data"] and '${content}' in config["data"]["message"]:
+                    config["data"]["message"] = config["data"]["message"].replace("${content}", config["data"]["content"])
+                    
         if provider_name.lower() == "gocqhttp":
             access_token = config.get("access_token")
             if access_token:

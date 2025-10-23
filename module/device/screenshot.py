@@ -75,7 +75,8 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
             if self.config.Error_SaveError:
                 self.screenshot_deque.append({'time': datetime.now(), 'image': self.image})
             if self.screenshot_queue is not None and self.image is not None:
-                is_success, buffer = cv2.imencode(".png", self.image)
+                rgb_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+                is_success, buffer = cv2.imencode(".png", rgb_image)
                 if is_success:
                     img_base64 = base64.b64encode(buffer).decode("utf-8")
                     self.screenshot_queue.put(img_base64)

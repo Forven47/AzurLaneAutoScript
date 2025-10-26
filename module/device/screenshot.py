@@ -75,11 +75,33 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
             if self.config.Error_SaveError:
                 self.screenshot_deque.append({'time': datetime.now(), 'image': self.image})
             if self.screenshot_queue is not None and self.image is not None:
-                rgb_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
-                is_success, buffer = cv2.imencode(".png", rgb_image)
-                if is_success:
-                    img_base64 = base64.b64encode(buffer).decode("utf-8")
-                    self.screenshot_queue.put(img_base64)
+                try:
+                    rgb_image = self.image
+                    h, w = rgb_image.shape[:2]
+                    max_w, max_h = 900, 1600
+                    if w > max_w or h > max_h:
+                        scale = min(max_w / w, max_h / h)
+                        rgb_image = cv2.resize(rgb_image, (int(w*scale), int(h*scale)),
+                                               interpolation=cv2.INTER_AREA)
+
+                    is_success, buffer = cv2.imencode(".jpg", rgb_image,
+                                                      [int(cv2.IMWRITE_JPEG_QUALITY), 100])
+                    if not is_success:
+                        raise RuntimeError('cv2.imencode failed')
+
+                    img_base64 = base64.b64encode(buffer.tobytes()).decode("utf-8")
+                    try:
+                        self.screenshot_queue.put(img_base64, block=False)
+                    except Exception:
+                        try:
+                            self.screenshot_queue.put(img_base64, timeout=0.2)
+                        except Exception:
+                            logger.warning('screenshot_queue 满或不可写，丢弃一帧截图')
+                except MemoryError:
+                    logger.error('截图编码时 MemoryError，丢弃一帧并尝试回收内存')
+                    import gc; gc.collect()
+                except Exception as e:
+                    logger.warning(f'截图处理失败，丢弃一帧: {e}')
 
             if self.check_screen_size() and self.check_screen_black():
                 break

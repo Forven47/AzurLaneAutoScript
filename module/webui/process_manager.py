@@ -28,8 +28,7 @@ class ProcessManager:
     def __init__(self, config_name: str = "alas") -> None:
         self.config_name = config_name
         self._renderable_queue: queue.Queue[ConsoleRenderable] = State.manager.Queue()
-        import multiprocessing
-        self._screenshot_data_queue: multiprocessing.Queue = multiprocessing.Queue(maxsize=8)
+        self._screenshot_data_queue = None
         self.renderables: List[ConsoleRenderable] = []
         self.renderables_max_length = 400
         self.renderables_reduce_length = 80
@@ -41,6 +40,20 @@ class ProcessManager:
         if not self.alive:
             if func is None:
                 func = get_config_mod(self.config_name)
+            try:
+                import multiprocessing
+                if getattr(self, "_screenshot_data_queue", None) is not None:
+                    try:
+                        self._screenshot_data_queue.close()
+                    except Exception:
+                        pass
+                    try:
+                        self._screenshot_data_queue.join_thread()
+                    except Exception:
+                        pass
+                self._screenshot_data_queue = multiprocessing.Queue(maxsize=8)
+            except Exception:
+                logger.exception("雪风大人提醒无法创建多进程截图队列")
             self._process = Process(
                 target=ProcessManager.run_process,
                 args=(

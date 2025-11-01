@@ -20,6 +20,13 @@ from module.shop.shop_voucher import VoucherShop
 
 
 class OperationSiren(OSMap):
+    def __init__(self, *args, **kwargs):
+        try:
+            super().__init__(*args, **kwargs)
+        except Exception as e:
+            logger.exception("OperationSiren init failed")
+            raise
+
     def os_port_mission(self):
         """
         Visit all ports and do the daily mission in it.

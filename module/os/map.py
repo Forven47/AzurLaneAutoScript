@@ -1156,3 +1156,9 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                     time.sleep(0.6)
         finally:
             backup.recover()
+
+        logger.info('执行一次自律寻敌以清理可能的装置')
+        try:
+            self.run_auto_search(question=True, rescan=None, after_auto_search=True)
+        except Exception as e:
+            logger.warning(f'自律寻敌过程出现异常: {e}')            

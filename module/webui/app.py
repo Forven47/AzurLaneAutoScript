@@ -440,6 +440,7 @@ class AlasGUI(Frame):
                         "font-size: 1.25rem; margin: auto .5rem auto;"
                     ),
                     put_scope("scheduler_btn"),
+                    put_scope("screenshot_btn"),
                 ],
             )
             put_scope(
@@ -549,6 +550,21 @@ class AlasGUI(Frame):
             self.task_handler.add(self.alas_update_dashboard, 10, True)
         self.task_handler.add(log.put_log(self.alas), 0.25, True)
         self.task_handler.add(self.update_screenshot_display, 0.5, True)
+
+        with use_scope("screenshot_btn", clear=True):
+            label = "看见了nanoda" if getattr(State, "display_screenshots", False) else "看不见nanoda"
+            def _toggle_screenshot(_=None):
+                State.display_screenshots = not getattr(State, "display_screenshots", False)
+                if State.display_screenshots:
+                    try:
+                        self.update_screenshot_display()
+                    except Exception:
+                        pass
+                else:
+                    run_js('var img=document.getElementById("screenshot-img"); if(img) img.src="/static/assets/spa/screen.png";')
+                with use_scope("screenshot_btn", clear=True):
+                    put_buttons([ "看见了nanoda" if State.display_screenshots else "看不见nanoda" ], [ _toggle_screenshot ], small=True)
+            put_buttons([label], [_toggle_screenshot], small=True)
 
     def set_dashboard_display(self, b):
         self._log.set_dashboard_display(b)
@@ -794,6 +810,8 @@ class AlasGUI(Frame):
                 self._update_dashboard()
 
     def update_screenshot_display(self):
+        if not getattr(State, "display_screenshots", False):
+            return
         img_base64 = None
         if hasattr(self, 'alas') and self.alas.alive:
             try:

@@ -1018,10 +1018,10 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             logger.warning('无法获取当前地图网格数据，已跳过定点巡逻。')
             return
 
-        # solved = getattr(self, '_solved_map_event', set())
-        # if any(k in solved for k in ('is_akashi', 'is_scanning_device', 'is_logging_tower')):
-        #     logger.info('彩蛋：雪风大人保佑你，本次定点巡逻已跳过')
-        #     return
+        solved = getattr(self, '_solved_map_event', set())
+        if any(k in solved for k in ('is_akashi', 'is_scanning_device', 'is_logging_tower')):
+            logger.info('彩蛋：雪风大人保佑你，本次舰队移动已跳过')
+            return
 
         patrol_locations = [(2, 0), (3, 0), (4, 0), (5, 0)]  # 对应 C1, D1, E1, F1
 

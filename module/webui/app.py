@@ -423,14 +423,16 @@ class AlasGUI(Frame):
         put_scope("overview", [put_scope("schedulers"), put_scope("logs")])
 
         with use_scope("schedulers"):
-            if getattr(State, "display_screenshots", False) and State.last_screenshot_base64 is not None:
-                img_html = f'<img id="screenshot-img" src="data:image/jpg;base64,{State.last_screenshot_base64}" style="max-height:240px; width:auto;">'
+            if getattr(State, "display_screenshots", False) and hasattr(self, 'alas') and self.alas.alive and self.alas.get_latest_screenshot:
+                img_html = f'<img id="screenshot-img" src="data:image/jpg;base64,{self.alas.get_latest_screenshot}" style="max-height:240px; width:auto;">'
                 put_scope("image-container", [put_html(img_html)])
             else:
                 put_scope(
                     "image-container",
                     [
-                        put_html(f'<img id="screenshot-img" src="{State.get_placeholder_url()}" style="max-height:240px; width:auto;">')
+                        put_html(
+                            f'<img id="screenshot-img" src="{State.get_placeholder_url()}" data-modal-src="{State.get_placeholder_url()}" style="max-height:240px; width:auto;">'
+                        )
                     ],
                 )
             put_scope(
@@ -508,7 +510,7 @@ class AlasGUI(Frame):
                         put_scope(
                             "log-bar-btns",
                             [
-                                put_scope("screenshot_btn"),                                
+                                put_scope("screenshot_control_btn"),                                
                                 put_scope("log_scroll_btn"),
                                 put_scope("dashboard_btn"),
                             ],
@@ -551,7 +553,7 @@ class AlasGUI(Frame):
         self.task_handler.add(log.put_log(self.alas), 0.25, True)
         self.task_handler.add(self.update_screenshot_display, 0.5, True)
 
-        with use_scope("screenshot_btn", clear=True):
+        with use_scope("screenshot_control_btn", clear=True):
             label = "看见了nanoda" if getattr(State, "display_screenshots", False) else "看不见nanoda"
 
             def _toggle_screenshot(_=None):
@@ -579,7 +581,7 @@ class AlasGUI(Frame):
                             pass
                 except Exception:
                     pass
-                with use_scope("screenshot_btn", clear=True):
+                with use_scope("screenshot_control_btn", clear=True):
                     put_buttons(
                         [
                             {"label": "看见了nanoda" if State.display_screenshots else "看不见nanoda", "value": "toggle", "color": "off"},
@@ -590,9 +592,9 @@ class AlasGUI(Frame):
 
             def _switch_placeholder(_=None):
                 try:
-                    url = State.toggle_placeholder()
+                    url = State.advance_placeholder()
                     run_js(f'var img=document.getElementById("screenshot-img"); if(img) {{ img.src="{url}"; img.setAttribute("data-modal-src", "{url}"); }}')
-                    toast(t("雪风大人的图片已切换") if hasattr(t, '__call__') else "雪风大人的图片已切换", duration=1)
+                    toast(t("Gui.Overview.PlaceholderSwitched"), duration=1)
                 except Exception:
                     pass
 
@@ -853,6 +855,10 @@ class AlasGUI(Frame):
     def update_screenshot_display(self):
         if not getattr(State, "display_screenshots", False):
             self.last_displayed_screenshot_base64 = None
+            if hasattr(State, "screenshot_queue") and hasattr(State.screenshot_queue, "clear"):
+                State.screenshot_queue.clear()
+            if hasattr(State, "last_screenshot_base64"):
+                State.last_screenshot_base64 = None
             run_js(f'''
                 var img = document.getElementById("screenshot-img");
                 if (img) {{
@@ -1033,6 +1039,7 @@ class AlasGUI(Frame):
                 var img = document.getElementById("screenshot-img");
                 if (img) {{
                     img.src = "{State.get_placeholder_url()}";
+                    img.setAttribute("data-modal-src", "{State.get_placeholder_url()}");
                 }}
             ''')
 
@@ -1613,6 +1620,146 @@ class AlasGUI(Frame):
             }
         );
         """
+        )
+
+        run_js(
+            '''
+        (function(){
+            function ensureScreenshotModal(){
+                if (document.getElementById('screenshot-modal')) return;
+                var modal = document.createElement('div');
+                modal.id = 'screenshot-modal';
+                Object.assign(modal.style, {
+                    position: 'fixed',
+                    left: 0,
+                    top: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    display: 'none',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    background: 'rgba(0,0,0,0.65)',
+                    zIndex: 99999,
+                    overflow: 'hidden',
+                    padding: '20px',
+                    boxSizing: 'border-box',
+                    cursor: 'grab'
+                });
+                var modalImg = document.createElement('img');
+                modalImg.id = 'screenshot-modal-img';
+                Object.assign(modalImg.style, {
+                    maxWidth: '100%',
+                    maxHeight: '90vh',
+                    objectFit: 'contain',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                    transition: 'transform 0.05s linear',
+                    transformOrigin: 'center center',
+                    willChange: 'transform'
+                });
+                modal.appendChild(modalImg);
+
+                modal.dataset.scale = 1;
+                modal.dataset.tx = 0;
+                modal.dataset.ty = 0;
+                modal.dataset.panning = 0;
+
+                function applyTransform() {
+                    var s = parseFloat(modal.dataset.scale) || 1;
+                    var tx = parseFloat(modal.dataset.tx) || 0;
+                    var ty = parseFloat(modal.dataset.ty) || 0;
+                    modalImg.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+                }
+
+                modal.addEventListener('wheel', function(e) {
+                    if (e.ctrlKey) return;
+                    e.preventDefault();
+                    var rect = modalImg.getBoundingClientRect();
+                    var cx = e.clientX - (rect.left + rect.width/2);
+                    var cy = e.clientY - (rect.top + rect.height/2);
+                    var scale = parseFloat(modal.dataset.scale) || 1;
+                    var delta = -e.deltaY;
+                    var factor = delta > 0 ? 1.12 : 0.88;
+                    var newScale = Math.min(6, Math.max(0.3, scale * factor));
+
+                    var tx = parseFloat(modal.dataset.tx) || 0;
+                    var ty = parseFloat(modal.dataset.ty) || 0;
+                    modal.dataset.tx = tx - cx * (newScale - scale);
+                    modal.dataset.ty = ty - cy * (newScale - scale);
+                    modal.dataset.scale = newScale;
+                    applyTransform();
+                }, { passive: false });
+
+                var start = { x:0, y:0 };
+                modalImg.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    modal.dataset.panning = 1;
+                    start.x = e.clientX;
+                    start.y = e.clientY;
+                    modal.style.cursor = 'grabbing';
+                });
+                window.addEventListener('mousemove', function(e) {
+                    if (modal.dataset.panning !== '1') return;
+                    var dx = e.clientX - start.x;
+                    var dy = e.clientY - start.y;
+                    start.x = e.clientX;
+                    start.y = e.clientY;
+                    modal.dataset.tx = (parseFloat(modal.dataset.tx) || 0) + dx;
+                    modal.dataset.ty = (parseFloat(modal.dataset.ty) || 0) + dy;
+                    applyTransform();
+                });
+                window.addEventListener('mouseup', function(e) {
+                    if (modal.dataset.panning === '1') {
+                        modal.dataset.panning = 0;
+                        modal.style.cursor = 'grab';
+                    }
+                });
+
+                modalImg.addEventListener('dblclick', function(e) {
+                    modal.dataset.scale = 1;
+                    modal.dataset.tx = 0;
+                    modal.dataset.ty = 0;
+                    applyTransform();
+                });
+
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) modal.style.display = 'none';
+                });
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        var m = document.getElementById('screenshot-modal');
+                        if (m) m.style.display = 'none';
+                    }
+                });
+
+                document.body.appendChild(modal);
+            }
+
+            // Ensure modal exists and wire click handler to #screenshot-img
+            ensureScreenshotModal();
+            function bindScreenshotImg() {
+                var img = document.getElementById('screenshot-img');
+                if (!img) return;
+                img.style.cursor = 'zoom-in';
+                img.onclick = function(e) {
+                    var m = document.getElementById('screenshot-modal');
+                    var mi = document.getElementById('screenshot-modal-img');
+                    if (!m || !mi) return;
+                    var src = img.getAttribute('data-modal-src') || img.src;
+                    mi.src = src;
+                    m.dataset.scale = 1;
+                    m.dataset.tx = 0;
+                    m.dataset.ty = 0;
+                    mi.style.transform = '';
+                    m.style.display = 'flex';
+                };
+            }
+            // Try binding now and also when DOM changes
+            bindScreenshotImg();
+            var obs = new MutationObserver(function(){ bindScreenshotImg(); });
+            obs.observe(document.body, { childList: true, subtree: true });
+        })();
+        '''
         )
 
         aside = get_localstorage("aside")

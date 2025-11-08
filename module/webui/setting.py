@@ -75,13 +75,33 @@ class State:
 
     @classmethod
     def get_placeholder_url(cls) -> str:
+        try:
+            idx = getattr(cls.deploy_config, "PlaceholderIndex", None)
+            if idx is not None:
+                try:
+                    idx = int(idx)
+                    cls.placeholder_index = idx % len(cls.placeholder_images)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         name = cls.placeholder_images[cls.placeholder_index % len(cls.placeholder_images)]
         return f"/static/assets/spa/{name}"
 
     @classmethod
     def toggle_placeholder(cls) -> str:
+        return cls.advance_placeholder()
+
+    @classmethod
+    def advance_placeholder(cls) -> str:
         cls.placeholder_index = (cls.placeholder_index + 1) % len(cls.placeholder_images)
-        return cls.get_placeholder_url()
+        try:
+            cls.deploy_config.PlaceholderIndex = cls.placeholder_index
+        except Exception:
+            pass
+        name = cls.placeholder_images[cls.placeholder_index]
+        return f"/static/assets/spa/{name}"
     
     @classmethod
     def init(cls):

@@ -594,7 +594,35 @@ class AlasGUI(Frame):
                 try:
                     url = State.advance_placeholder()
                     run_js(f'var img=document.getElementById("screenshot-img"); if(img) {{ img.src="{url}"; img.setAttribute("data-modal-src", "{url}"); }}')
-                    toast(t("Gui.Overview.PlaceholderSwitched"), duration=1)
+                    gradient = 'linear-gradient(90deg, #00b894, #0984e3)'
+                    toast(t("Gui.Overview.PlaceholderSwitched"), duration=1, position="top", color=gradient)
+                    run_js(r"""
+                        setTimeout(function(){
+                            var el = document.querySelector('.toastify.toastify-top.toastify-right') || document.querySelector('.toastify.toastify-top') || document.querySelector('.toastify');
+                            if (!el) return;
+                            el.style.color = '#ffffff';
+                            el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.22)';
+                            el.style.zIndex = '2147483647';
+                            Array.from(el.querySelectorAll('*')).forEach(function(n){ n.style.color = '#ffffff'; });
+                            try{
+                                if (el.classList && el.classList.contains('toastify-right')){
+                                    el.style.position = 'fixed';
+                                    el.style.top = '8px';
+                                    el.style.right = '8px';
+                                    el.style.left = 'auto';
+                                    el.style.transform = 'none';
+                                    el.style.margin = '0';
+                                } else {
+                                    el.style.position = 'fixed';
+                                    el.style.top = '8px';
+                                    el.style.left = '50%';
+                                    el.style.right = 'auto';
+                                    el.style.transform = 'translateX(-50%)';
+                                    el.style.margin = '0';
+                                }
+                            }catch(e){}
+                        }, 80);
+                    """)
                 except Exception:
                     pass
 

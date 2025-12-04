@@ -5,7 +5,9 @@ import json
 import queue
 import threading
 import time
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
+from pathlib import Path
 from functools import partial
 from typing import Dict, List, Optional
 
@@ -321,6 +323,188 @@ class AlasGUI(Frame):
         self.init_menu(name=task)
         self.set_title(t(f"Task.{task}.name"))
 
+        if task in ("OpsiHazard1Leveling",):
+            def _render_opsi_stats():
+                try:
+                    from module.statistics.opsi_month import get_opsi_stats, compute_monthly_cl1_akashi_ap
+
+                    s = get_opsi_stats().summary()
+                except Exception as e:
+                    with use_scope("opsi_stats", clear=True):
+                        put_text(f"Failed to load OpSi stats: {e}")
+                    return
+
+                labels = ["月份", "战斗场次", "战斗轮次", "出击消耗", "遇见明石次数", "遇见明石概率", "平均体力", "净赚体力", "循环效率"]
+                month = s.get("month", "-")
+                total = s.get("total_battles", "-")
+                try:
+                    tb = int(total)
+                    rounds = (tb + 1) // 2
+                    sortie_cost = rounds * 5
+                except Exception:
+                    tb = total
+                    rounds = "-"
+                    sortie_cost = "-"
+
+                akashi = s.get("akashi_encounters", 0)
+                try:
+                    ak = int(akashi)
+                except Exception:
+                    ak = akashi
+
+                try:
+                    if isinstance(rounds, int) and rounds > 0:
+                        rate = float(ak) / float(rounds)
+                        akashi_rate = f"{rate * 100:.2f}%"
+                    else:
+                        akashi_rate = "-"
+                except Exception:
+                    akashi_rate = "-"
+
+                try:
+                    ap_bought = compute_monthly_cl1_akashi_ap()
+                except Exception:
+                    ap_bought = "-"
+
+                try:
+                    if isinstance(ap_bought, (int, float)) and isinstance(ak, int) and ak > 0:
+                        avg_ap = int(float(ap_bought) / ak + 0.5)
+                    else:
+                        try:
+                            ap_tmp = int(ap_bought)
+                            if isinstance(ak, int) and ak > 0:
+                                avg_ap = int(ap_tmp / ak + 0.5)
+                            else:
+                                avg_ap = "-"
+                        except Exception:
+                            avg_ap = "-"
+                except Exception:
+                    avg_ap = "-"
+
+                try:
+                    net_ap = int(ap_bought) - int(sortie_cost)
+                except Exception:
+                    net_ap = "-"
+
+                try:
+                    eff = int(net_ap) / int(sortie_cost) * 100
+                    loop_eff = f"{eff:.2f}%"
+                except Exception:
+                    loop_eff = "-"
+
+                values = [month, tb, rounds, sortie_cost, ak, akashi_rate, avg_ap, net_ap, loop_eff]
+
+                table = [labels, values]
+
+                with use_scope("opsi_stats", clear=True):
+                    put_html('<div style="margin-top:12px; margin-bottom:8px; font-weight:600">雪风大人的侵蚀一数据收集</div>')
+                    put_row([put_text(f"当月购买体力: {ap_bought}")])
+                    html = '<table style="width:100%; border-collapse:collapse;">'
+                    html += '<thead><tr>' + ''.join([f'<th style="text-align:left;padding:6px">{l}</th>' for l in labels]) + '</tr></thead>'
+                    html += '<tbody><tr>' + ''.join([f'<td style="text-align:center;padding:6px">{v}</td>' for v in values]) + '</tr></tbody>'
+                    html += '</table>'
+                    put_html(html)
+                    def export_opsi_csv(save_to_desktop: bool = True):
+                        import io
+                        try:
+                            from module.statistics.opsi_month import get_opsi_stats, compute_monthly_cl1_akashi_ap
+                        except Exception as e:
+                            toast(f"导出失败：无法加载统计模块：{e}", color="error")
+                            return
+
+                        try:
+                            s_local = get_opsi_stats().summary() or {}
+                        except Exception:
+                            s_local = {}
+
+                        month_local = s_local.get("month") or datetime.now().strftime("%Y-%m")
+                        total_battles_local = int(s_local.get("total_battles") or 0)
+                        total_rounds_local = int(s_local.get("total_rounds") or ((total_battles_local + 1) // 2))
+                        ap_spent_local = int(s_local.get("ap_spent") or (total_rounds_local * 5))
+                        akashi_count_local = int(s_local.get("akashi_encounters") or s_local.get("akashi_count") or 0)
+
+                        if "akashi_percent" in s_local:
+                            try:
+                                akashi_percent_local = float(s_local.get("akashi_percent") or 0)
+                            except Exception:
+                                akashi_percent_local = 0.0
+                        elif total_rounds_local > 0:
+                            akashi_percent_local = (akashi_count_local / total_rounds_local) * 100
+                        else:
+                            akashi_percent_local = 0.0
+
+                        try:
+                            purchased_local = compute_monthly_cl1_akashi_ap() or 0
+                        except Exception:
+                            purchased_local = 0
+
+                        if akashi_count_local > 0:
+                            try:
+                                avg_ap_local = int(float(purchased_local) / akashi_count_local + 0.5)
+                            except Exception:
+                                avg_ap_local = "-"
+                        else:
+                            avg_ap_local = "-"
+
+                        try:
+                            net_ap_local = int((purchased_local or 0) - ap_spent_local)
+                        except Exception:
+                            net_ap_local = "-"
+
+                        if isinstance(net_ap_local, (int, float)) and ap_spent_local:
+                            try:
+                                eff_local = (net_ap_local / ap_spent_local) * 100
+                            except Exception:
+                                eff_local = "-"
+                        else:
+                            eff_local = "-"
+
+                        labels_local = ["月份", "战斗场次", "战斗轮次", "出击消耗", "遇见明石次数", "遇见明石概率(%)", "平均体力", "净赚体力", "循环效率(%)", "当月购买体力"]
+                        values_local = [
+                            month_local,
+                            total_battles_local,
+                            total_rounds_local,
+                            ap_spent_local,
+                            akashi_count_local,
+                            f"{akashi_percent_local:.2f}" if isinstance(akashi_percent_local, (int, float)) else akashi_percent_local,
+                            avg_ap_local,
+                            net_ap_local,
+                            f"{eff_local:.2f}" if isinstance(eff_local, (int, float)) else eff_local,
+                            purchased_local,
+                        ]
+
+                        output = io.StringIO()
+                        output.write(','.join(labels_local) + "\n")
+                        def _escape(cell):
+                            s = str(cell)
+                            if ',' in s or '"' in s or '\n' in s:
+                                s = '"' + s.replace('"', '""') + '"'
+                            return s
+                        output.write(','.join([_escape(c) for c in values_local]) + "\n")
+                        csv_bytes = output.getvalue().encode('utf-8-sig')
+
+                        filename_local = f"侵蚀1练级_{month_local}_详细数据.csv"
+
+                        if save_to_desktop:
+                            try:
+                                desktop_local = Path.home() / 'Desktop'
+                                desktop_local.mkdir(parents=True, exist_ok=True)
+                                fpath = desktop_local / filename_local
+                                with open(fpath, 'wb') as _f:
+                                    _f.write(csv_bytes)
+                                toast(f"已保存至桌面：{fpath}", color="success")
+                            except Exception as e:
+                                logger.exception(e)
+                                toast(f"保存桌面失败：{e}", color="error")
+
+                    put_row([
+                        put_button("刷新", onclick=_render_opsi_stats, color="off"),
+                        put_button("导出并保存到桌面", onclick=lambda: export_opsi_csv(True), color="off"),
+                    ], size="auto")
+
+            put_scope("opsi_stats", [])
+            _render_opsi_stats()
+
         put_scope("_groups", [put_none(), put_scope("groups"), put_scope("navigator")])
 
         task_help: str = t(f"Task.{task}.help")
@@ -337,6 +521,7 @@ class AlasGUI(Frame):
                 self.set_navigator(group)
 
     @use_scope("groups")
+
     def set_group(self, group, arg_dict, config, task):
         group_name = group[0]
 

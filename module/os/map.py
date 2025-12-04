@@ -460,6 +460,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
 
     _auto_search_battle_count = 0
     _auto_search_round_timer = 0
+    _cl1_auto_search_battle_count = 0
 
     def on_auto_search_battle_count_reset(self):
         self._auto_search_battle_count = 0
@@ -468,14 +469,86 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
     def on_auto_search_battle_count_add(self):
         self._auto_search_battle_count += 1
         logger.attr('battle_count', self._auto_search_battle_count)
-        if self.is_in_task_cl1_leveling:
+        if getattr(self, 'is_in_task_cl1_leveling', False) and getattr(self, 'is_cl1_enabled', False):
+            try:
+                try:
+                    self._cl1_auto_search_battle_count += 1
+                except Exception:
+                    self._cl1_auto_search_battle_count = 1
+                logger.attr('cl1_battle_count', self._cl1_auto_search_battle_count)
+                try:
+                    self._cl1_increment_monthly(1)
+                except Exception:
+                    logger.debug('Failed to persist monthly CL1 battle increment', exc_info=True)
+            except Exception:
+                logger.debug('Failed to update cl1 battle counter', exc_info=True)
+
             if self._auto_search_battle_count % 2 == 1:
                 if self._auto_search_round_timer:
                     cost = round(time.time() - self._auto_search_round_timer, 2)
                     logger.attr('CL1 time cost', f'{cost}s/round')
                 self._auto_search_round_timer = time.time()
 
-    def os_auto_search_daemon(self, drop=None, strategic=False, skip_first_screenshot=True):
+    def get_current_cl1_battle_count(self):
+        return int(getattr(self, '_cl1_auto_search_battle_count', 0))
+
+    def _cl1_month_key(self, year: int = None, month: int = None) -> str:
+        from datetime import datetime
+        now = datetime.now()
+        if year is None:
+            year = now.year
+        if month is None:
+            month = now.month
+        return f"{year:04d}-{month:02d}"
+
+    def _cl1_monthly_file(self):
+        from pathlib import Path
+        project_root = Path(__file__).resolve().parents[2]
+        cl1_dir = project_root / 'log' / 'cl1'
+        try:
+            cl1_dir.mkdir(parents=True, exist_ok=True)
+            return cl1_dir / 'cl1_monthly.json'
+        except Exception:
+            log_dir = project_root / 'log'
+            log_dir.mkdir(parents=True, exist_ok=True)
+            return log_dir / 'cl1_monthly.json'
+
+    def _load_cl1_monthly(self):
+        import json
+        f = self._cl1_monthly_file()
+        if not f.exists():
+            return {}
+        try:
+            with f.open('r', encoding='utf-8') as fh:
+                return json.load(fh)
+        except Exception:
+            logger.exception('Failed to load CL1 monthly file, resetting data')
+            return {}
+
+    def _save_cl1_monthly(self, data):
+        import json
+        f = self._cl1_monthly_file()
+        try:
+            with f.open('w', encoding='utf-8') as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+        except Exception:
+            logger.exception('Failed to save CL1 monthly file')
+
+    def _cl1_increment_monthly(self, delta: int = 1, year: int = None, month: int = None):
+        key = self._cl1_month_key(year=year, month=month)
+        data = self._load_cl1_monthly()
+        try:
+            data[key] = int(data.get(key, 0)) + int(delta)
+        except Exception:
+            data[key] = int(delta)
+        self._save_cl1_monthly(data)
+
+    def get_monthly_cl1_battle_count(self, year: int = None, month: int = None):
+        key = self._cl1_month_key(year=year, month=month)
+        data = self._load_cl1_monthly()
+        return int(data.get(key, 0))
+
+    def os_auto_search_daemon(self, drop=None, strategic=False, interrupt=None, skip_first_screenshot=True):
         """
         Args:
             drop (DropRecord):

@@ -2807,6 +2807,10 @@
     "ExecuteFixedPatrolScan": {
       "name": "舰队强制移动",
       "help": "雪风大人温馨提示：开启后，将强制移动舰队以免找不到明石，指挥官你也不想因为找不到明石导致坠机nanoda？打开这个功能轻轻松松达到50万+海里每月nanoda，指挥官还在等什么nanoda!"
+    },    
+    "Cl1Filter": {
+      "name": "明石购买筛选",
+      "help": "侵蚀一明石一般只购买体力nanoda"
     }
   },
   "Daemon": {

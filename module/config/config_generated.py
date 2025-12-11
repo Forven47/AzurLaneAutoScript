@@ -507,6 +507,7 @@ class GeneratedConfig:
     OpsiHazard1Leveling_SirenResearch_Enable = False
     OpsiHazard1Leveling_MinimumActionPointReserve = 200   
     OpsiHazard1Leveling_ExecuteFixedPatrolScan = False
+    OpsiHazard1Leveling_Cl1Filter = 'ActionPoint > PurpleCoins'
 
     # Group `Daemon`
     Daemon_EnterMap = True

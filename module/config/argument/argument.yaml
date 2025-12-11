@@ -825,6 +825,8 @@ OpsiHazard1Leveling:
   SirenResearch_Enable: false
   MinimumActionPointReserve: 200        
   ExecuteFixedPatrolScan: false
+  Cl1Filter: |-
+    ActionPoint > PurpleCoins
 
 # ==================== Tools ====================
 

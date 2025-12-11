@@ -98,11 +98,16 @@ class Selector():
             list[Item]:
         """
         items = self.pretreatment(items)
-        parser = self.config.OpsiGeneral_AkashiShopFilter
-        if not parser.strip():
-            parser = GeneratedConfig.OpsiGeneral_AkashiShopFilter
+        if getattr(self, 'is_in_task_cl1_leveling', False) and getattr(self, 'is_cl1_enabled', False):
+            parser = self.config.OpsiHazard1Leveling_Cl1Filter
+            if not parser:
+                parser = 'ActionPoint'
+        else:
+            parser = self.config.OpsiGeneral_AkashiShopFilter
+            if not parser.strip():
+                parser = GeneratedConfig.OpsiGeneral_AkashiShopFilter
         FILTER.load(parser)
-        return FILTER.applys(items, funcs=[self.check_cl1_purple_coins, self.enough_coins_in_akashi])
+        return FILTER.applys(items, funcs=[self.enough_coins_in_akashi])
 
     def items_filter_in_os_shop(self, items) -> List[Item]:
         """

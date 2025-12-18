@@ -795,9 +795,11 @@ class AlasGUI(Frame):
                         setTimeout(function(){
                             var el = document.querySelector('.toastify.toastify-top.toastify-right') || document.querySelector('.toastify.toastify-top') || document.querySelector('.toastify');
                             if (!el) return;
-                            el.classList.add('alas-force-text');
+                            #el.classList.add('alas-force-text');
+                            el.style.color = '#ffffff';
                             el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.22)';
                             el.style.zIndex = '2147483647';
+                            Array.from(el.querySelectorAll('*')).forEach(function(n){ n.style.color = '#ffffff'; });
                             /* children inherit via .alas-force-text */
                             try{
                                 if (el.classList && el.classList.contains('toastify-right')){
@@ -1671,11 +1673,14 @@ class AlasGUI(Frame):
         self.alas_name = ""
         if hasattr(self, "alas"):
             del self.alas
+        self.state_switch.switch()
+        '''
         if hasattr(self, 'state_switch'):
             try:
                 self.state_switch.switch()
             except Exception:
                 pass
+        '''
 
     def ui_alas(self, config_name: str) -> None:
         if config_name == self.alas_name:
@@ -2112,9 +2117,11 @@ class AlasGUI(Frame):
                 setTimeout(function(){
                     var el = document.querySelector('.toastify.toastify-top.toastify-right') || document.querySelector('.toastify.toastify-top') || document.querySelector('.toastify');
                     if (!el) return;
-                    el.classList.add('alas-force-text');
+                    el.style.color = '#ffffff';
+                    #el.classList.add('alas-force-text');
                     el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.22)';
                     el.style.zIndex = '2147483647';
+                    Array.from(el.querySelectorAll('*')).forEach(function(n){ n.style.color = '#ffffff'; });
                     /* children inherit via .alas-force-text */
                     try{
                         if (el.classList && el.classList.contains('toastify-right')){

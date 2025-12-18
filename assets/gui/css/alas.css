@@ -590,7 +590,7 @@ pre.rich-traceback-code {
              "Arial",
              serif;
 }
-
+/*
 .alas-force-text,
 .alas-force-text * {
     color: var(--alas-content-text) !important;
@@ -615,3 +615,4 @@ pre.rich-traceback-code {
     background: var(--alas-content-bg) !important;
     color: var(--alas-content-text) !important;
 }
+*/

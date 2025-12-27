@@ -1274,7 +1274,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             time.sleep(0.3)
         return False
 
-    def _handle_siren_bug_reinteract(self):
+    def _handle_siren_bug_reinteract(self, drop=None):
         # 侵蚀一塞壬研究装置处理后，跳转指定高侵蚀区域触发塞壬研究装置消耗两次紫币，最后返回侵蚀一自律
         try:
             siren_research_enable = bool(self.config.cross_get(

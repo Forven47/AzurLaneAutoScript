@@ -2801,6 +2801,14 @@
       "name": "塞壬研究装置",
       "help": "雪风大人提醒：消耗紫币换黄币，一个月没有几十万海里慎用nanoda!"
     },
+    "SirenBug_Enable": {
+      "name": "塞壬研究装置Bug利用",
+      "help": "利用塞壬研究装置Bug，无限刷取高侵蚀区域塞壬研究装置资源\n启用该功能前需启用塞壬研究装置功能，否则该功能将不生效"
+    },
+    "SirenBug_Zone": {
+      "name": "指定塞壬Bug利用区域",
+      "help": "指定已刷出塞壬研究装置的高侵蚀区域\n支持海域ID、国服/国际服/日服/台服海域名称，例如 \"51\", \"NA海域东南E\", \"NA Ocean SE Sector E\"\n填入默认值0，或者删除数值即可取消指定"
+    },
     "MinimumActionPointReserve": {
       "name": "保留 X 点行动力",
       "help": "搏一搏，单车变摩托，雪风大人已经把幸运分给指挥官了nanoda，上吧nanoda！"

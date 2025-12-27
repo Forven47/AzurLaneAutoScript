@@ -1964,9 +1964,11 @@
     },
     "OpsiHazard1Leveling": {
       "TargetZone": 0,
-      "YellowCoinPreserve": 100000,      
+      "YellowCoinPreserve": 100000,
       "SirenResearch_Enable": false,
-      "MinimumActionPointReserve": 200,            
+      "SirenBug_Enable": false,
+      "SirenBug_Zone": 0,
+      "MinimumActionPointReserve": 200,
       "ExecuteFixedPatrolScan": false,
       "Cl1Filter": "ActionPoint > PurpleCoins"
     },

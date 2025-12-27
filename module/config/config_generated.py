@@ -505,6 +505,8 @@ class GeneratedConfig:
     OpsiHazard1Leveling_TargetZone = 0  # 0, 44, 22
     OpsiHazard1Leveling_YellowCoinPreserve = 100000    
     OpsiHazard1Leveling_SirenResearch_Enable = False
+    OpsiHazard1Leveling_SirenBug_Enable = False
+    OpsiHazard1Leveling_SirenBug_Zone = 0 
     OpsiHazard1Leveling_MinimumActionPointReserve = 200   
     OpsiHazard1Leveling_ExecuteFixedPatrolScan = False
     OpsiHazard1Leveling_Cl1Filter = 'ActionPoint > PurpleCoins'

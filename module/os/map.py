@@ -1241,41 +1241,40 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         except Exception as e:
             logger.warning(f'自律寻敌过程出现异常: {e}')
 
-    def _select_story_option_by_index(self, target_index, options_count=3):
-        # 手动选择剧情选项
-        option_confirm_timer = Timer(1.5, count=3).start()
-        while option_confirm_timer.reached() is False:
-            self.device.screenshot()
-            # 识别所有选项
-            options = self._story_option_buttons_2()
-            if len(options) == options_count:
-                try:
-                    select = options[target_index]
-                    self.device.click(select)
+    def _handle_siren_bug_reinteract(self, drop=None):
+        # 侵蚀一塞壬探测装置处理后，跳转指定高侵蚀区域触发塞壬探测装置消耗两次紫币，最后返回侵蚀一自律
+        # by Forven47 2026.01.04
+
+        def _click_story_confirm_button():
+            confirm_timer = Timer(3, count=6).start()
+            while confirm_timer.reached() is False:
+                self.device.screenshot()
+                if self.appear(POPUP_CONFIRM, offset=(20, 20), interval=0):
+                    self.device.click(POPUP_CONFIRM)
                     time.sleep(0.5)
                     return True
-                except IndexError:
-                    select = options[0]
-                    self.device.click(select)
-                    time.sleep(0.5)
-                    return False
-            time.sleep(0.3)
-        return False
+                time.sleep(0.3)
+            return False
+        
+        def _select_story_option_by_index(target_index, options_count=3):
+            option_confirm_timer = Timer(1.5, count=3).start()
+            while option_confirm_timer.reached() is False:
+                self.device.screenshot()
+                options = self._story_option_buttons_2()
+                if len(options) == options_count:
+                    try:
+                        select = options[target_index]
+                        self.device.click(select)
+                        time.sleep(0.5)
+                        return True
+                    except IndexError:
+                        select = options[0]
+                        self.device.click(select)
+                        time.sleep(0.5)
+                        return False
+                time.sleep(0.3)
+            return False
 
-    def _click_story_confirm_button(self):
-        # 点击剧情确认按钮POPUP_CONFIRM
-        confirm_timer = Timer(3, count=6).start()
-        while confirm_timer.reached() is False:
-            self.device.screenshot()
-            if self.appear(POPUP_CONFIRM, offset=(20, 20), interval=0):
-                self.device.click(POPUP_CONFIRM)
-                time.sleep(0.5)
-                return True
-            time.sleep(0.3)
-        return False
-
-    def _handle_siren_bug_reinteract(self, drop=None):
-        # 侵蚀一塞壬研究装置处理后，跳转指定高侵蚀区域触发塞壬研究装置消耗两次紫币，最后返回侵蚀一自律
         try:
             siren_research_enable = bool(self.config.cross_get(
                 keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenResearch_Enable',
@@ -1290,24 +1289,19 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 default=0
             ))
         except Exception as e:
-            logger.warning(f'读取SirenBug配置失败: {e}，跳过塞壬研究装置BUG利用')
             return
 
-        # 前置条件校验
         if not (siren_research_enable and siren_bug_enable and siren_bug_zone != 0):
-            logger.info('SirenBug功能前置条件不满足，跳过塞壬研究装置BUG利用')
             return
 
         current_zone_id = self.zone.zone_id
         if current_zone_id not in (22, 44):
-            logger.warning(f'当前区域{current_zone_id}非侵蚀一，跳过塞壬研究装置BUG利用')
             return
         erosion_one_zone = self.name_to_zone(current_zone_id)
         logger.hr(f'RUN SIREN BUG EXPLOITATION')
-        logger.info('当前区域: {erosion_one_zone}, 目标区域: {siren_bug_zone}')
+        logger.info(f'Current zone: {erosion_one_zone}, Target zone: {siren_bug_zone}')
 
         try:
-            # 跳转至指定高侵蚀区域
             with self.config.temporary(STORY_ALLOW_SKIP=False):
                 self.os_map_goto_globe(unpin=False)
                 self.globe_goto(siren_bug_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
@@ -1320,65 +1314,53 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 device_handled = False
 
                 while find_device_timer.reached() is False and not device_handled:
-                    # 遍历相机视角，滑动地图
                     if len(camera_queue) == 0:
                         camera_queue = self.map.camera_data
                     camera_queue = camera_queue.sort_by_camera_distance(self.camera)
                     target_camera = camera_queue[0]
                     camera_queue = camera_queue[1:]
-
-                    # 滑动到目标视角
                     self.focus_to(target_camera, swipe_limit=(6, 5))
                     self.focus_to_grid_center(0.3)
                     self.device.screenshot()
                     self.update()
 
-                    # 寻找塞壬研究装置
                     grids = self.view.select(is_scanning_device=True)
                     if grids and grids[0].is_scanning_device and 'is_scanning_device' not in self._solved_map_event:
                         grid = grids[0]
-                        logger.info(f'找到塞壬研究装置: {grid}')
+                        logger.info(f'Found Siren Scanning Device: {grid}')
 
-                        # 移动舰队至塞壬研究装置，触发剧情
                         self.device.click(grid)
                         time.sleep(10)
+                        # wait_until_walk_stable函数内置自动剧情选项，会影响本函数功能，有时间或许会想办法调整
                         #result = self.wait_until_walk_stable(drop=drop, walk_out_of_step=False, confirm_timer=Timer(1.5, count=4))
                         #if 'event' in result:
                         with self.config.temporary(STORY_ALLOW_SKIP=False):
                             self._solved_map_event.add('is_scanning_device')
-
-                            # 第2个选项
-                            if self._select_story_option_by_index(target_index=1, options_count=3):
-                                self._click_story_confirm_button()
-                            # 第2个选项
+                            if _select_story_option_by_index(target_index=1, options_count=3):
+                                _click_story_confirm_button()
                             time.sleep(1)
-                            if self._select_story_option_by_index(target_index=1, options_count=3):
-                                self._click_story_confirm_button()
-                            # 第3个选项
+                            if _select_story_option_by_index(target_index=1, options_count=3):
+                                _click_story_confirm_button()
                             time.sleep(1)
-                            if self._select_story_option_by_index(target_index=2, options_count=3):
-                                self._click_story_confirm_button()
-
+                            if _select_story_option_by_index(target_index=2, options_count=3):
+                                _click_story_confirm_button()
                             device_handled = True
                         #break
                     time.sleep(0.5)
 
                 if not device_handled:
-                    logger.warning(f'区域{siren_bug_zone}未找到塞壬研究装置，跳过后续操作')
+                    logger.warning(f'No Siren Scanning Device was found in {siren_bug_zone} zone, skipping...')
 
-            # 返回侵蚀一区域
             self.os_map_goto_globe(unpin=False)
             self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
             self.zone_init()
-
             self.run_auto_search(question=True, rescan='full', after_auto_search=True)
 
         except Exception as e:
-            logger.error(f'塞壬研究装置BUG利用失败: {e}', exc_info=True)
-            # 异常时强制返回侵蚀一区域
+            logger.error(f'Failed to run Siren bug exploitation: {e}', exc_info=True)
             try:
                 self.os_map_goto_globe(unpin=False)
                 self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
                 self.run_auto_search(question=True, rescan='full', after_auto_search=True)
             except Exception as e2:
-                logger.error(f'异常恢复失败: {e2}', exc_info=True)
+                logger.error(f'Recovery failed: {e2}', exc_info=True)

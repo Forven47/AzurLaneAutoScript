@@ -63,6 +63,11 @@ class __logger(logging.Logger):
         self,
         func: Callable[[ConsoleRenderable], None],
     ) -> None: ...
+    def check_log_contains(
+        self,
+        keyword: str,
+        check_lines: int = 100,
+    ) -> bool: ...
     def print(
         self,
         *objects: ConsoleRenderable,

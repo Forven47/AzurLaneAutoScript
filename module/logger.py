@@ -247,6 +247,39 @@ def set_func_logger(func):
         h, RichRenderableHandler)]
     logger.addHandler(hdlr)
 
+def check_log_contains(keyword: str, check_lines: int = 100) -> bool:
+    """
+    Check log by.
+    by Forven47 2026.01.17
+    """
+    if not keyword or check_lines <= 0:
+        return False
+    log_file_path = logger.log_file
+
+    try:
+        with open(log_file_path, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            pos = f.tell()
+            lines = []
+            buffer = bytearray()
+
+            while len(lines) < check_lines and pos > 0:
+                pos -= 1
+                f.seek(pos, os.SEEK_SET)
+                b = f.read(1)
+                if b == b'\n':
+                    if buffer:
+                        lines.append(buffer[::-1].decode('utf-8', errors='replace'))
+                        buffer = bytearray()
+                else:
+                    buffer.extend(b)
+            if buffer:
+                lines.append(buffer[::-1].decode('utf-8', errors='replace'))
+        return any(keyword in line for line in lines)
+    except FileNotFoundError:
+        return False
+    except Exception as e:
+        return False
 
 def _get_renderables(
     self: Console, *objects, sep=" ", end="\n", justify=None, emoji=None, markup=None, highlight=None,
@@ -349,6 +382,7 @@ logger.attr = attr
 logger.attr_align = attr_align
 logger.set_file_logger = set_file_logger
 logger.set_func_logger = set_func_logger
+logger.check_log_contains = check_log_contains
 logger.rule = rule
 logger.print = print
 logger.log_file: str

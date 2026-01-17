@@ -10,7 +10,7 @@ from module.base.utils import point_limit
 from module.config.utils import dict_to_kv
 from module.exception import MapWalkError
 from module.exercise.assets import QUIT_RECONFIRM
-from module.handler.assets import MAINTENANCE_ANNOUNCE
+from module.handler.assets import MAINTENANCE_ANNOUNCE, POPUP_CONFIRM
 from module.logger import logger
 from module.map.fleet import Fleet
 from module.map.map_grids import SelectedGrids
@@ -920,3 +920,161 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
             return False
         self.device.click(nearest)
         self._nearest_object_click_timer.reset()
+
+    def wait_until_walk_stable_for_siren_bug(self, confirm_timer=None, skip_first_screenshot=False, walk_out_of_step=True, target_grid=None, device_operate=True, drop=None):
+        """
+        Re-interact logic of siren bug.
+        Wait until homo_loca stabled.
+        by Forven47 2026.01.17
+        """
+
+        logger.hr('Wait until walk stable for siren bug')
+        record = None
+        self.device.screenshot_interval_set(0.35)
+        if confirm_timer is None:
+            confirm_timer = Timer(0.8, count=2)
+        operate_timer = Timer(1.5, count=3)
+        result = set()
+        operate_handled = False
+        clicked_story = False
+        
+        def _select_story_option_by_index(target_index, options_count):
+            operate_timer.reset()
+            while not operate_timer.reached():
+                self.device.screenshot()
+                options = self._story_option_buttons_2()
+                if len(options) == options_count:
+                    try:
+                        select = options[target_index]
+                        self.device.click(select)
+                        return True
+                    except IndexError:
+                        select = options[0]
+                        self.device.click(select)
+                        return False
+            return False
+        
+        def _click_story_confirm_button():
+            operate_timer.reset()
+            while not operate_timer.reached():
+                self.device.screenshot()
+                if self.appear_then_click(POPUP_CONFIRM, offset=(20, 20), interval=1):
+                    return True
+            return False
+
+        confirm_timer.reset()
+        while 1:
+            if skip_first_screenshot:
+                skip_first_screenshot = False
+            else:
+                self.device.screenshot()
+
+            if device_operate:
+                if (self.appear(POPUP_CONFIRM, offset=(20, 20)) or self._story_option_buttons_2()) and not operate_handled:
+                    operate_timer.reset()
+                    while not operate_timer.reached():
+                        self.device.screenshot()
+                    if _select_story_option_by_index(target_index=1, options_count=3):
+                        _click_story_confirm_button()
+                        operate_timer.reset()
+                    while not operate_timer.reached():
+                        self.device.screenshot()
+                    if _select_story_option_by_index(target_index=1, options_count=3):
+                        _click_story_confirm_button()
+                        operate_timer.reset()
+                    while not operate_timer.reached():
+                        self.device.screenshot()
+                    if _select_story_option_by_index(target_index=2, options_count=3):
+                        logger.info('click completed')
+                        operate_handled = True
+                        operate_timer.reset()
+                    while not operate_timer.reached():
+                        self.device.screenshot()
+                    self.device.click(CLICK_SAFE_AREA)
+                    result.add('siren_device')
+
+
+                event = self.handle_map_event(drop=drop)
+                if event:
+                    confirm_timer.reset()
+                    result.add('event')
+                    if event == 'story_skip':
+                        clicked_story = True
+                    elif event == 'map_get_items':
+                        if clicked_story:
+                            logger.info('Got items from story')
+                            self.device.click_record_clear()
+                            clicked_story = False
+                    else:
+                        clicked_story = False
+                    continue
+
+            if self.handle_retirement():
+                confirm_timer.reset()
+                continue
+
+            if self.handle_walk_out_of_step():
+                if walk_out_of_step:
+                    raise MapWalkError('walk_out_of_step')
+                else:
+                    continue
+
+            if self.handle_popup_confirm('WALK_UNTIL_STABLE'):
+                confirm_timer.reset()
+                continue
+
+            if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=3):
+                confirm_timer.reset()
+                continue
+
+            """
+            if self.match_template_color(IN_MAP, offset=(200, 5), threshold=50):
+                self.update()
+                self.update_os()
+                current = self.view.backend.homo_loca
+                logger.attr('homo_loca', current)
+                if record is None or (current is not None and np.linalg.norm(np.subtract(current, record)) < 5.5):
+                    if confirm_timer.reached():
+                        current_fleet_grid = None
+                        self.view.predict()
+                        fleet_grids = self.view.select(is_fleet=True)
+                        if fleet_grids:
+                            current_fleet_grid = fleet_grids[0]
+                        elif hasattr(self, 'map') and self.map:
+                            map_fleet_grids = self.map.select(is_fleet=True)
+                            if map_fleet_grids:
+                                current_fleet_grid = map_fleet_grids[0]
+                        logger.info(f'FL_coord: {current_fleet_grid}, target_coord: {target_grid}')
+                        if current_fleet_grid is None:
+                            break
+                        elif str(current_fleet_grid) != str(target_grid):
+                            self.device.click(target_grid)
+                            confirm_timer.reset()
+                            record = None
+                            continue
+                        break
+                else:
+                    confirm_timer.reset()
+                record = current
+            else:
+                confirm_timer.reset()
+            """
+
+            if self.match_template_color(IN_MAP, offset=(200, 5), threshold=50):
+                self.update_os()
+                current = self.view.backend.homo_loca
+                logger.attr('homo_loca', current)
+                # Max known distance is 4.48px, homo_loca between ( 56,  60) and ( 52,  58)
+                if record is None or (current is not None and np.linalg.norm(np.subtract(current, record)) < 5.5):
+                    if confirm_timer.reached():
+                        break
+                else:
+                    confirm_timer.reset()
+                record = current
+            else:
+                confirm_timer.reset()
+
+        result = '_'.join(result)
+        logger.info(f'Walk stabled, result: {result}')
+        self.device.screenshot_interval_set()
+        return result

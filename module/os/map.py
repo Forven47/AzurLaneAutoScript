@@ -9,16 +9,16 @@ from module.exercise.assets import QUIT_RECONFIRM
 from module.handler.login import LoginHandler, MAINTENANCE_ANNOUNCE
 from module.logger import logger
 from module.map.map import Map
-from module.os.assets import FLEET_EMP_DEBUFF, MAP_GOTO_GLOBE_FOG
-from module.handler.assets import POPUP_CONFIRM
+from module.os.assets import FLEET_EMP_DEBUFF, MAP_GOTO_GLOBE_FOG, FLEET_CHOOSE
 from module.os.fleet import OSFleet
 from module.os.globe_camera import GlobeCamera
 from module.os.globe_operation import RewardUncollectedError
 from module.os_handler.assets import AUTO_SEARCH_OS_MAP_OPTION_OFF, AUTO_SEARCH_OS_MAP_OPTION_OFF_DISABLED, \
-    AUTO_SEARCH_OS_MAP_OPTION_ON, AUTO_SEARCH_REWARD
+    AUTO_SEARCH_OS_MAP_OPTION_ON, AUTO_SEARCH_REWARD, CLICK_SAFE_AREA
 from module.os_handler.strategic import StrategicSearchHandler
 from module.ui.assets import GOTO_MAIN
 from module.ui.page import page_os
+from module.config.config import TaskEnd
 
 
 class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
@@ -790,8 +790,6 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             elif 'event' in result and grid.is_scanning_device:
                 self._solved_map_event.add('is_scanning_device')
                 self.os_auto_search_run(drop=drop)
-                # 调用塞壬BUG处理功能
-                self._handle_siren_bug_reinteract(drop=drop)
                 return True
             else:
                 logger.warning(f'Arrive question with unexpected result: {result}, expected: {grid.str}')
@@ -946,8 +944,9 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 result = self.wait_until_walk_stable(
                     drop=drop, walk_out_of_step=False, confirm_timer=Timer(1.5, count=4))
             self.os_auto_search_run(drop=drop)
-            # 调用塞壬BUG处理功能
-            self._handle_siren_bug_reinteract(drop=drop)
+            if not logger.check_log_contains(keyword='STORY_OPTION_1_OF_2', check_lines=100):
+                logger.info('log true')
+                self._handle_siren_bug_reinteract(drop=drop)
             if 'event' in result:
                 self._solved_map_event.add('is_scanning_device')
                 return True
@@ -1242,38 +1241,11 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             logger.warning(f'自律寻敌过程出现异常: {e}')
 
     def _handle_siren_bug_reinteract(self, drop=None):
-        # 侵蚀一塞壬探测装置处理后，跳转指定高侵蚀区域触发塞壬探测装置消耗两次紫币，最后返回侵蚀一自律
-        # by Forven47 2026.01.04
-
-        def _click_story_confirm_button():
-            confirm_timer = Timer(3, count=6).start()
-            while confirm_timer.reached() is False:
-                self.device.screenshot()
-                if self.appear(POPUP_CONFIRM, offset=(20, 20), interval=0):
-                    self.device.click(POPUP_CONFIRM)
-                    time.sleep(0.5)
-                    return True
-                time.sleep(0.3)
-            return False
-        
-        def _select_story_option_by_index(target_index, options_count=3):
-            option_confirm_timer = Timer(1.5, count=3).start()
-            while option_confirm_timer.reached() is False:
-                self.device.screenshot()
-                options = self._story_option_buttons_2()
-                if len(options) == options_count:
-                    try:
-                        select = options[target_index]
-                        self.device.click(select)
-                        time.sleep(0.5)
-                        return True
-                    except IndexError:
-                        select = options[0]
-                        self.device.click(select)
-                        time.sleep(0.5)
-                        return False
-                time.sleep(0.3)
-            return False
+        """
+        Execute bug exploitation logic of scanning_device.
+        Re-interact scanning_device in target zone, count the interaction times.
+        by Forven47 2026.01.17
+        """
 
         try:
             siren_research_enable = bool(self.config.cross_get(
@@ -1298,8 +1270,10 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         if current_zone_id not in (22, 44):
             return
         erosion_one_zone = self.name_to_zone(current_zone_id)
-        logger.hr(f'RUN SIREN BUG EXPLOITATION')
-        logger.info(f'Current zone: {erosion_one_zone}, Target zone: {siren_bug_zone}')
+        logger.hr(f'RUN SIREN BUG EXPLOITATION', level=2)
+
+        if not hasattr(self, '_handle_scanning_device'):
+            self._handle_scanning_device = 0
 
         try:
             with self.config.temporary(STORY_ALLOW_SKIP=False):
@@ -1307,13 +1281,13 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 self.globe_goto(siren_bug_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
                 self.zone_init()
                 self.map_init(map_=None)
+                self.wait_until_camera_stable()
                 camera_queue = self.map.camera_data
-
                 find_device_timer = Timer(30, count=1).start()
                 self._solved_map_event = set()
                 device_handled = False
 
-                while find_device_timer.reached() is False and not device_handled:
+                while not find_device_timer.reached() and not device_handled:
                     if len(camera_queue) == 0:
                         camera_queue = self.map.camera_data
                     camera_queue = camera_queue.sort_by_camera_distance(self.camera)
@@ -1328,39 +1302,119 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                     if grids and grids[0].is_scanning_device and 'is_scanning_device' not in self._solved_map_event:
                         grid = grids[0]
                         logger.info(f'Found Siren Scanning Device: {grid}')
-
+                        self._solved_map_event.add('is_scanning_device')
                         self.device.click(grid)
-                        time.sleep(10)
-                        # wait_until_walk_stable函数内置自动剧情选项，会影响本函数功能，有时间或许会想办法调整
-                        #result = self.wait_until_walk_stable(drop=drop, walk_out_of_step=False, confirm_timer=Timer(1.5, count=4))
-                        #if 'event' in result:
-                        with self.config.temporary(STORY_ALLOW_SKIP=False):
-                            self._solved_map_event.add('is_scanning_device')
-                            if _select_story_option_by_index(target_index=1, options_count=3):
-                                _click_story_confirm_button()
-                            time.sleep(1)
-                            if _select_story_option_by_index(target_index=1, options_count=3):
-                                _click_story_confirm_button()
-                            time.sleep(1)
-                            if _select_story_option_by_index(target_index=2, options_count=3):
-                                _click_story_confirm_button()
-                            device_handled = True
-                        #break
-                    time.sleep(0.5)
+                        self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, target_grid=grid)
+                        device_handled = True
+                        self._handle_scanning_device += 1
 
                 if not device_handled:
-                    logger.warning(f'No Siren Scanning Device was found in {siren_bug_zone} zone, skipping...')
+                    self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenBug_Enable', value=False)
 
-            self.os_map_goto_globe(unpin=False)
-            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
-            self.zone_init()
-            self.run_auto_search(question=True, rescan='full', after_auto_search=True)
+                if self._handle_scanning_device >= 5:
+                    logger.hr('Handle_Scanning_Device reached 5 times, collect resources')
+                    original_fleet_index = self.get_fleet_current_index()
+                    auto_search_timer = Timer(60, count=1)
+                    fleet_timer = Timer(1, count=3)
+                    battle_triggered = False
+                    combat_quit = False
+                    reward_popup_appeared = False
+                    auto_search_enabled = False
+                    auto_search_timer.reset()
 
-        except Exception as e:
-            logger.error(f'Failed to run Siren bug exploitation: {e}', exc_info=True)
+                    while not auto_search_timer.reached() and not battle_triggered:
+                        self.device.screenshot()
+                        if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3):
+                            self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
+                            continue
+
+                        if self.combat_appear() and not self.is_in_map():
+                            battle_triggered = True
+                            combat_quit_timer = Timer(10, count=1).start()
+                            pause_interval = Timer(0.5, count=1).start()
+                            while not combat_quit_timer.reached() and not combat_quit:
+                                self.device.screenshot()
+                                if pause_interval.reached():
+                                    pause = self.is_combat_executing()
+                                    if pause:
+                                        self.device.click(pause)
+                                        self.interval_reset(MAINTENANCE_ANNOUNCE)
+                                        pause_interval.reset()
+                                        continue
+                                
+                                if self.handle_combat_quit(offset=(20, 20), interval=0):
+                                    self.interval_reset(MAINTENANCE_ANNOUNCE)
+                                    pause_interval.reset()
+                                    continue
+                                
+                                if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
+                                    self.interval_reset(MAINTENANCE_ANNOUNCE)
+                                    pause_interval.reset()
+                                    combat_quit = True
+                                    break
+
+                    if battle_triggered:
+                        pause_interval.reset()
+                        self.device.click(CLICK_SAFE_AREA)
+                        self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=3)
+
+                    while not self.is_in_map() and not self.appear(FLEET_CHOOSE):
+                        self.device.screenshot()
+
+                    if combat_quit:
+                        fleet_timer.reset()
+                        while not fleet_timer.reached():
+                            original_fleet_index = self.fleet_selector.get()
+                        other_fleet_index = None
+
+                    if original_fleet_index in [1, 2, 3, 4]:
+                        for idx in [1, 2, 3, 4]:
+                            if idx != original_fleet_index:
+                                other_fleet_index = idx
+                                break
+
+                    if other_fleet_index:
+                        self.fleet_set(other_fleet_index)
+                        logger.info(f'Switched to fleet {other_fleet_index}, original fleet: {original_fleet_index}')
+
+                        with self.config.temporary(STORY_ALLOW_SKIP=True):
+                            auto_search_timer.reset()
+                            while not auto_search_timer.reached() and not reward_popup_appeared:
+                                self.device.screenshot()
+                                if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3) and not auto_search_enabled:
+                                    self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
+                                    self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, device_operate=False)
+                                    self.wait_until_camera_stable()
+                                    auto_search_enabled = True
+                                    continue
+                                if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map:
+                                    reward_popup_appeared = True
+                                    break
+
+                    if reward_popup_appeared:
+                        self.os_map_goto_globe(unpin=False)
+                        self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                        self.zone_init()
+
+                    if other_fleet_index != original_fleet_index:
+                        self.fleet_set(original_fleet_index)
+                    
+                    self.os_hazard1_leveling()
+                    
+                else:
+                    self.os_map_goto_globe(unpin=False)
+                    self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                    self.zone_init()
+                    self.os_hazard1_leveling()
+
+        except TaskEnd:
+            raise
+        except Exception as e1:
+            logger.error(f'Failed to run Siren bug exploitation: {e1}', exc_info=True)
             try:
                 self.os_map_goto_globe(unpin=False)
                 self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                self.zone_init()
                 self.run_auto_search(question=True, rescan='full', after_auto_search=True)
             except Exception as e2:
                 logger.error(f'Recovery failed: {e2}', exc_info=True)

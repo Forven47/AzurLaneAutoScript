@@ -9411,7 +9411,7 @@
       "HandledDeviceCount":{
         "type": "input",
         "value": 0,
-        "display": "hide"
+        "display": "disabled"
       },
       "Cl1Filter": {
         "type": "textarea",

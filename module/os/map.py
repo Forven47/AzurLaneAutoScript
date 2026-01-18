@@ -1272,8 +1272,10 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         erosion_one_zone = self.name_to_zone(current_zone_id)
         logger.hr(f'RUN SIREN BUG EXPLOITATION', level=2)
 
-        if not hasattr(self, '_handle_scanning_device'):
-            self._handle_scanning_device = 0
+        handled_count = int(self.config.cross_get(
+            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', 
+            default=0
+            ))
 
         try:
             with self.config.temporary(STORY_ALLOW_SKIP=False):
@@ -1306,12 +1308,17 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                         self.device.click(grid)
                         self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, target_grid=grid)
                         device_handled = True
-                        self._handle_scanning_device += 1
+                        handled_count += 1
+                        self.config.cross_set(
+                            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', 
+                            value=handled_count
+                            )
+                        logger.info(f'Handled count: {handled_count}')
 
                 if not device_handled:
                     self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenBug_Enable', value=False)
 
-                if self._handle_scanning_device >= 5:
+                if handled_count >= 5:
                     logger.hr('Handle_Scanning_Device reached 5 times, collect resources')
                     original_fleet_index = self.get_fleet_current_index()
                     auto_search_timer = Timer(60, count=1)

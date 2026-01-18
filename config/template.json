@@ -1970,6 +1970,7 @@
       "SirenBug_Zone": 0,
       "MinimumActionPointReserve": 200,
       "ExecuteFixedPatrolScan": false,
+      "HandledDeviceCount": 0,
       "Cl1Filter": "ActionPoint > PurpleCoins"
     },
     "OpsiFleet": {

@@ -9408,6 +9408,11 @@
         "type": "checkbox",
         "value": false
       },
+      "HandledDeviceCount":{
+        "type": "input",
+        "value": 0,
+        "display": "hide"
+      },
       "Cl1Filter": {
         "type": "textarea",
         "value": "ActionPoint"

@@ -9400,6 +9400,11 @@
         "type": "input",
         "value": 0
       },
+      "HandledDeviceCount":{
+        "type": "input",
+        "value": 0,
+        "display": "disabled"
+      },
       "MinimumActionPointReserve": {
         "type": "input",
         "value": 200
@@ -9407,11 +9412,6 @@
       "ExecuteFixedPatrolScan": {
         "type": "checkbox",
         "value": false
-      },
-      "HandledDeviceCount":{
-        "type": "input",
-        "value": 0,
-        "display": "disabled"
       },
       "Cl1Filter": {
         "type": "textarea",

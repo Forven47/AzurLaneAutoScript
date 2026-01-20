@@ -938,22 +938,6 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
         operate_handled = False
         clicked_story = False
         
-        def _select_story_option_by_index(target_index, options_count):
-            operate_timer.reset()
-            while not operate_timer.reached():
-                self.device.screenshot()
-                options = self._story_option_buttons_2()
-                if len(options) == options_count:
-                    try:
-                        select = options[target_index]
-                        self.device.click(select)
-                        return True
-                    except IndexError:
-                        select = options[0]
-                        self.device.click(select)
-                        return False
-            return False
-        
         def _click_story_confirm_button():
             operate_timer.reset()
             while not operate_timer.reached():
@@ -974,17 +958,17 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                     operate_timer.reset()
                     while not operate_timer.reached():
                         self.device.screenshot()
-                    if _select_story_option_by_index(target_index=1, options_count=3):
+                    if self.select_story_option_by_index(target_index=1, options_count=3):
                         _click_story_confirm_button()
                         operate_timer.reset()
                     while not operate_timer.reached():
                         self.device.screenshot()
-                    if _select_story_option_by_index(target_index=1, options_count=3):
+                    if self.select_story_option_by_index(target_index=1, options_count=3):
                         _click_story_confirm_button()
                         operate_timer.reset()
                     while not operate_timer.reached():
                         self.device.screenshot()
-                    if _select_story_option_by_index(target_index=2, options_count=3):
+                    if self.select_story_option_by_index(target_index=2, options_count=3):
                         logger.info('click completed')
                         operate_handled = True
                         operate_timer.reset()

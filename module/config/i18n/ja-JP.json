@@ -2811,6 +2811,10 @@
       "name": "指定塞壬Bug利用区域",
       "help": "指定已刷出塞壬探测装置的高侵蚀区域\n支持海域ID、国服/国际服/日服/台服海域名称，例如 \"51\", \"NA海域东南E\", \"NA Ocean SE Sector E\"\n填入默认值0，或者删除数值即可取消指定"
     },
+    "HandledDeviceCount": {
+      "name": "塞壬探测装置已处理计数",
+      "help": "无需手动修改，当处理次数超过5次后收集高侵蚀区域资源，且该计数自动重置为0"
+    },
     "MinimumActionPointReserve": {
       "name": "保留 X 点行动力",
       "help": "搏一搏，单车变摩托，雪风大人已经把幸运分给指挥官了nanoda，上吧nanoda！"

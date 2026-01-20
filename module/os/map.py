@@ -1335,6 +1335,11 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                             self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
                             continue
 
+                        if self.select_story_option_by_index(target_index=2, options_count=3):
+                            self.device.click(CLICK_SAFE_AREA)
+                            logger.info('Auto_search was unexcepted to scanning_device')
+                            continue
+
                         if self.combat_appear() and not self.is_in_map():
                             battle_triggered = True
                             combat_quit_timer = Timer(10, count=1).start()
@@ -1360,6 +1365,14 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                                     combat_quit = True
                                     break
 
+                        find_device_timer.reset()
+                        if find_device_timer.reached():
+                            self.os_map_goto_globe(unpin=False)
+                            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                            self.zone_init()
+                            self.os_hazard1_leveling()
+                            return
+
                     if battle_triggered:
                         pause_interval.reset()
                         self.device.click(CLICK_SAFE_AREA)
@@ -1367,6 +1380,13 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
 
                     while not self.is_in_map() and not self.appear(FLEET_CHOOSE):
                         self.device.screenshot()
+                        find_device_timer.reset()
+                        if find_device_timer.reached():
+                            self.os_map_goto_globe(unpin=False)
+                            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                            self.zone_init()
+                            self.os_hazard1_leveling()
+                            return
 
                     if combat_quit:
                         fleet_timer.reset()
@@ -1390,8 +1410,19 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                                 self.device.screenshot()
                                 if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3) and not auto_search_enabled:
                                     self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
+                                    find_device_timer.reset()
                                     self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, device_operate=False)
                                     self.wait_until_camera_stable()
+                                    if self.select_story_option_by_index(target_index=2, options_count=3):
+                                        self.device.click(CLICK_SAFE_AREA)
+                                        logger.info('Auto_search was unexcepted to scanning_device')
+                                        continue
+                                    if find_device_timer.reached():
+                                        self.os_map_goto_globe(unpin=False)
+                                        self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+                                        self.zone_init()
+                                        self.os_hazard1_leveling()
+                                        return
                                     auto_search_enabled = True
                                     continue
                                 if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map:
@@ -1399,6 +1430,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                                     break
 
                     if reward_popup_appeared:
+                        self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', value=0)
                         self.os_map_goto_globe(unpin=False)
                         self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
                         self.zone_init()
@@ -1407,12 +1439,14 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                         self.fleet_set(original_fleet_index)
                     
                     self.os_hazard1_leveling()
+                    return
                     
                 else:
                     self.os_map_goto_globe(unpin=False)
                     self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
                     self.zone_init()
                     self.os_hazard1_leveling()
+                    return
 
         except TaskEnd:
             raise

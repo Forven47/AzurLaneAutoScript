@@ -490,6 +490,22 @@ class InfoHandler(ModuleBase):
 
         self.ensure_no_story()
 
+    def select_story_option_by_index(self, target_index, options_count):
+        self._story_option_timer.reset()
+        while not self._story_option_timer.reached():
+            self.device.screenshot()
+            options = self._story_option_buttons_2()
+            if len(options) == options_count:
+                try:
+                    select = options[target_index]
+                    self.device.click(select)
+                    return True
+                except IndexError:
+                    select = options[0]
+                    self.device.click(select)
+                    return False
+        return False
+
     """
     Game tips
     """

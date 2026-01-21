@@ -826,6 +826,10 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             rescan = 'full'
         self.handle_ash_beacon_attack()
 
+        current_zone_id = self.zone.zone_id
+        if current_zone_id in (151, 152):
+            return
+
         logger.info(f'Run auto search, question={question}, rescan={rescan}')
         finished_combat = 0
         with self.stat.new(
@@ -1328,6 +1332,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                     reward_popup_appeared = False
                     auto_search_enabled = False
                     auto_search_timer.reset()
+                    find_device_timer.reset()
 
                     while not auto_search_timer.reached() and not battle_triggered:
                         self.device.screenshot()
@@ -1340,7 +1345,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                             logger.info('Auto_search was unexcepted to scanning_device')
                             continue
 
-                        if self.combat_appear() and not self.is_in_map():
+                        if self.combat_appear():
                             battle_triggered = True
                             combat_quit_timer = Timer(10, count=1).start()
                             pause_interval = Timer(0.5, count=1).start()
@@ -1365,7 +1370,6 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                                     combat_quit = True
                                     break
 
-                        find_device_timer.reset()
                         if find_device_timer.reached():
                             self.os_map_goto_globe(unpin=False)
                             self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
@@ -1378,9 +1382,9 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                         self.device.click(CLICK_SAFE_AREA)
                         self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=3)
 
-                    while not self.is_in_map() and not self.appear(FLEET_CHOOSE):
+                    find_device_timer.reset()
+                    while not self.is_in_map():
                         self.device.screenshot()
-                        find_device_timer.reset()
                         if find_device_timer.reached():
                             self.os_map_goto_globe(unpin=False)
                             self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
@@ -1406,11 +1410,11 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
 
                         with self.config.temporary(STORY_ALLOW_SKIP=True):
                             auto_search_timer.reset()
+                            find_device_timer.reset()
                             while not auto_search_timer.reached() and not reward_popup_appeared:
                                 self.device.screenshot()
                                 if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3) and not auto_search_enabled:
                                     self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
-                                    find_device_timer.reset()
                                     self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, device_operate=False)
                                     self.wait_until_camera_stable()
                                     if self.select_story_option_by_index(target_index=2, options_count=3):
@@ -1425,7 +1429,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                                         return
                                     auto_search_enabled = True
                                     continue
-                                if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map:
+                                if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map():
                                     reward_popup_appeared = True
                                     break
 
@@ -1456,6 +1460,6 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 self.os_map_goto_globe(unpin=False)
                 self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
                 self.zone_init()
-                self.run_auto_search(question=True, rescan='full', after_auto_search=True)
+                self.os_hazard1_leveling()
             except Exception as e2:
                 logger.error(f'Recovery failed: {e2}', exc_info=True)

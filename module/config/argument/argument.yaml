@@ -825,6 +825,7 @@ OpsiHazard1Leveling:
   SirenResearch_Enable: false
   SirenBug_Enable: false    
   SirenBug_Zone: 0  
+  HandledDeviceCount_Enable: false
   HandledDeviceCount: 0
   MinimumActionPointReserve: 200        
   ExecuteFixedPatrolScan: false

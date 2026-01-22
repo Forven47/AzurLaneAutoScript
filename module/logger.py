@@ -249,7 +249,7 @@ def set_func_logger(func):
 
 def check_log_contains(keyword: str, check_lines: int = 100) -> bool:
     """
-    Check log by.
+    Check log by line
     by Forven47 2026.01.17
     """
     if not keyword or check_lines <= 0:

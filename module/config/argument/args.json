@@ -9400,6 +9400,10 @@
         "type": "input",
         "value": 0
       },
+      "HandledDeviceCount_Enable":{
+        "type": "checkbox",
+        "value": false
+      },
       "HandledDeviceCount":{
         "type": "input",
         "value": 0,

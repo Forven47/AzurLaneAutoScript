@@ -1264,6 +1264,14 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenBug_Zone',
                 default=0
             ))
+            handled_count_enable = int(self.config.cross_get(
+                keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount_Enable', 
+                default=0
+            ))
+            handled_count = int(self.config.cross_get(
+                keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', 
+                default=0
+            ))
         except Exception as e:
             return
 
@@ -1275,11 +1283,6 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             return
         erosion_one_zone = self.name_to_zone(current_zone_id)
         logger.hr(f'RUN SIREN BUG EXPLOITATION', level=2)
-
-        handled_count = int(self.config.cross_get(
-            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', 
-            default=0
-            ))
 
         try:
             with self.config.temporary(STORY_ALLOW_SKIP=False):
@@ -1322,129 +1325,14 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 if not device_handled:
                     self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenBug_Enable', value=False)
 
-                if handled_count >= 5:
-                    logger.hr('Handle_Scanning_Device reached 5 times, collect resources')
-                    original_fleet_index = self.get_fleet_current_index()
-                    auto_search_timer = Timer(60, count=1)
-                    fleet_timer = Timer(1, count=3)
-                    battle_triggered = False
-                    combat_quit = False
-                    reward_popup_appeared = False
-                    auto_search_enabled = False
-                    auto_search_timer.reset()
-                    find_device_timer.reset()
+                if not handled_count_enable:
+                    self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', value=0)
 
-                    while not auto_search_timer.reached() and not battle_triggered:
-                        self.device.screenshot()
-                        if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3):
-                            self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
-                            continue
-
-                        if self.select_story_option_by_index(target_index=2, options_count=3):
-                            self.device.click(CLICK_SAFE_AREA)
-                            logger.info('Auto_search was unexcepted to scanning_device')
-                            continue
-
-                        if self.combat_appear():
-                            battle_triggered = True
-                            combat_quit_timer = Timer(10, count=1).start()
-                            pause_interval = Timer(0.5, count=1).start()
-                            while not combat_quit_timer.reached() and not combat_quit:
-                                self.device.screenshot()
-                                if pause_interval.reached():
-                                    pause = self.is_combat_executing()
-                                    if pause:
-                                        self.device.click(pause)
-                                        self.interval_reset(MAINTENANCE_ANNOUNCE)
-                                        pause_interval.reset()
-                                        continue
-                                
-                                if self.handle_combat_quit(offset=(20, 20), interval=0):
-                                    self.interval_reset(MAINTENANCE_ANNOUNCE)
-                                    pause_interval.reset()
-                                    continue
-                                
-                                if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
-                                    self.interval_reset(MAINTENANCE_ANNOUNCE)
-                                    pause_interval.reset()
-                                    combat_quit = True
-                                    break
-
-                        if find_device_timer.reached():
-                            self.os_map_goto_globe(unpin=False)
-                            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
-                            self.zone_init()
-                            self.os_hazard1_leveling()
-                            return
-
-                    if battle_triggered:
-                        pause_interval.reset()
-                        self.device.click(CLICK_SAFE_AREA)
-                        self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=3)
-
-                    find_device_timer.reset()
-                    while not self.is_in_map():
-                        self.device.screenshot()
-                        if find_device_timer.reached():
-                            self.os_map_goto_globe(unpin=False)
-                            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
-                            self.zone_init()
-                            self.os_hazard1_leveling()
-                            return
-
-                    if combat_quit:
-                        fleet_timer.reset()
-                        while not fleet_timer.reached():
-                            original_fleet_index = self.fleet_selector.get()
-                        other_fleet_index = None
-
-                    if original_fleet_index in [1, 2, 3, 4]:
-                        for idx in [1, 2, 3, 4]:
-                            if idx != original_fleet_index:
-                                other_fleet_index = idx
-                                break
-
-                    if other_fleet_index:
-                        self.fleet_set(other_fleet_index)
-                        logger.info(f'Switched to fleet {other_fleet_index}, original fleet: {original_fleet_index}')
-
-                        with self.config.temporary(STORY_ALLOW_SKIP=True):
-                            auto_search_timer.reset()
-                            find_device_timer.reset()
-                            while not auto_search_timer.reached() and not reward_popup_appeared:
-                                self.device.screenshot()
-                                if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3) and not auto_search_enabled:
-                                    self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
-                                    self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, device_operate=False)
-                                    self.wait_until_camera_stable()
-                                    if self.select_story_option_by_index(target_index=2, options_count=3):
-                                        self.device.click(CLICK_SAFE_AREA)
-                                        logger.info('Auto_search was unexcepted to scanning_device')
-                                        continue
-                                    if find_device_timer.reached():
-                                        self.os_map_goto_globe(unpin=False)
-                                        self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
-                                        self.zone_init()
-                                        self.os_hazard1_leveling()
-                                        return
-                                    auto_search_enabled = True
-                                    continue
-                                if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map():
-                                    reward_popup_appeared = True
-                                    break
-
-                    if reward_popup_appeared:
-                        self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', value=0)
-                        self.os_map_goto_globe(unpin=False)
-                        self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
-                        self.zone_init()
-
-                    if other_fleet_index != original_fleet_index:
-                        self.fleet_set(original_fleet_index)
-                    
+                if handled_count_enable and handled_count >= 5:
+                    self._collect_resources_after_handled(erosion_one_zone=erosion_one_zone, drop=drop)
                     self.os_hazard1_leveling()
                     return
-                    
+
                 else:
                     self.os_map_goto_globe(unpin=False)
                     self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
@@ -1463,3 +1351,123 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 self.os_hazard1_leveling()
             except Exception as e2:
                 logger.error(f'Recovery failed: {e2}', exc_info=True)
+
+    def _collect_resources_after_handled(self, erosion_one_zone, drop):
+        """
+        After handling 5 times, collect resources
+        by Forven47 2026.01.22
+        """
+
+        logger.hr('Handle_Scanning_Device reached 5 times, collect resources')
+        original_fleet_index = self.get_fleet_current_index()
+        auto_search_timer = Timer(50, count=1)
+        find_device_timer = Timer(30, count=1)
+        fleet_timer = Timer(1, count=3)
+        battle_triggered = False
+        combat_quit = False
+        reward_popup_appeared = False
+        auto_search_enabled = False
+        auto_search_timer.reset()
+        find_device_timer.reset()
+        other_fleet_index = None
+
+        while not auto_search_timer.reached() and not battle_triggered:
+            self.device.screenshot()
+            if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3):
+                self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
+                continue
+
+            if self.select_story_option_by_index(target_index=2, options_count=3):
+                self.device.click(CLICK_SAFE_AREA)
+                logger.info('Auto_search was unexcepted to scanning_device')
+                continue
+
+            if self.combat_appear():
+                battle_triggered = True
+                combat_quit_timer = Timer(10, count=1).start()
+                pause_interval = Timer(0.5, count=1).start()
+                while not combat_quit_timer.reached() and not combat_quit:
+                    self.device.screenshot()
+                    if pause_interval.reached():
+                        pause = self.is_combat_executing()
+                        if pause:
+                            self.device.click(pause)
+                            self.interval_reset(MAINTENANCE_ANNOUNCE)
+                            pause_interval.reset()
+                            continue
+                    
+                    if self.handle_combat_quit(offset=(20, 20), interval=0):
+                        self.interval_reset(MAINTENANCE_ANNOUNCE)
+                        pause_interval.reset()
+                        continue
+                    
+                    if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
+                        self.interval_reset(MAINTENANCE_ANNOUNCE)
+                        pause_interval.reset()
+                        combat_quit = True
+                        break
+
+            if find_device_timer.reached():
+                self.os_hazard1_leveling()
+                return
+
+        if battle_triggered:
+            pause_interval.reset()
+            self.device.click(CLICK_SAFE_AREA)
+            self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=3)
+
+        find_device_timer.reset()
+        while not self.is_in_map():
+            self.device.screenshot()
+            if find_device_timer.reached():
+                self.os_hazard1_leveling()
+                return
+
+        if combat_quit:
+            fleet_timer.reset()
+            while not fleet_timer.reached():
+                original_fleet_index = self.fleet_selector.get()
+
+        if original_fleet_index in [1, 2, 3, 4]:
+            for idx in [1, 2, 3, 4]:
+                if idx != original_fleet_index:
+                    other_fleet_index = idx
+                    break
+
+        if other_fleet_index:
+            self.fleet_set(other_fleet_index)
+            logger.info(f'Switched to fleet {other_fleet_index}, original fleet: {original_fleet_index}')
+
+            with self.config.temporary(STORY_ALLOW_SKIP=True):
+                auto_search_timer.reset()
+                find_device_timer.reset()
+                while not auto_search_timer.reached() and not reward_popup_appeared:
+                    self.device.screenshot()
+                    if self.match_template_color(AUTO_SEARCH_OS_MAP_OPTION_OFF, offset=(5, 120), interval=3) and not auto_search_enabled:
+                        self.device.click(AUTO_SEARCH_OS_MAP_OPTION_OFF)
+                        self.wait_until_walk_stable_for_siren_bug(drop=drop, walk_out_of_step=False, device_operate=False)
+                        self.wait_until_camera_stable()
+                        if self.select_story_option_by_index(target_index=2, options_count=3):
+                            self.device.click(CLICK_SAFE_AREA)
+                            logger.info('Auto_search was unexcepted to scanning_device')
+                            continue
+                        if find_device_timer.reached():
+                            self.os_hazard1_leveling()
+                            return
+                        auto_search_enabled = True
+                        continue
+                    if self.appear_then_click(AUTO_SEARCH_REWARD, offset=(50, 50), interval=1) or self.is_in_map():
+                        reward_popup_appeared = True
+                        break
+
+        if reward_popup_appeared:
+            self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', value=0)
+            self.os_map_goto_globe(unpin=False)
+            self.globe_goto(erosion_one_zone, types=('SAFE', 'DANGEROUS'), refresh=True)
+            self.zone_init()
+
+        if other_fleet_index != original_fleet_index:
+            self.fleet_set(original_fleet_index)
+        
+        return
+    

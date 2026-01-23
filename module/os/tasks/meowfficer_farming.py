@@ -15,6 +15,9 @@ class OpsiMeowfficerFarming(OSMap):
             logger.info('With CL1 leveling enabled, set action point preserve to 1000')
             self.config.OpsiMeowfficerFarming_ActionPointPreserve = 1000
         preserve = min(self.get_action_point_limit(), self.config.OpsiMeowfficerFarming_ActionPointPreserve, 2000)
+        disabled_auto_search = bool(self.config.cross_get(
+            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.BugZoneAutoSearch_Disable',
+            default=True))
         #if getattr(self.config, 'OpsiMeowfficerFarming_StayInZone', False):
         #    preserve = 0
         if preserve == 0:
@@ -39,7 +42,10 @@ class OpsiMeowfficerFarming(OSMap):
             logger.warning(f'OpsiExplore is still running, cannot do {self.config.task.command}')
             self.config.task_delay(server_update=True)
             self.config.task_stop()
-
+        if disabled_auto_search:
+            self.config.cross_set(
+                keys='OpsiHazard1Leveling.OpsiHazard1Leveling.BugZoneAutoSearch_Disable',
+                value=False)
         ap_checked = False
         while True:
             self.config.OS_ACTION_POINT_PRESERVE = preserve

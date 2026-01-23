@@ -327,6 +327,10 @@ Opsi:
       - OpsiFleet
     OpsiCrossMonth:
       - Scheduler
+    OpsiScanningDeviceFarming:
+      - Scheduler
+      - OpsiScanningDeviceFarming
+      - OpsiFleet
 
 # ==================== Tool ====================
 

@@ -790,6 +790,9 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             elif 'event' in result and grid.is_scanning_device:
                 self._solved_map_event.add('is_scanning_device')
                 self.os_auto_search_run(drop=drop)
+                if logger.check_log_contains(keyword='POPUP_CONFIRM_STORY_SKIP', check_lines=120):
+                    logger.info('Confirmed scanning_device is handled')
+                    self._handle_siren_bug_reinteract(drop=drop)
                 return True
             else:
                 logger.warning(f'Arrive question with unexpected result: {result}, expected: {grid.str}')
@@ -827,7 +830,11 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         self.handle_ash_beacon_attack()
 
         current_zone_id = self.zone.zone_id
-        if current_zone_id in (151, 152):
+        disabled_auto_search = bool(self.config.cross_get(
+            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.BugZoneAutoSearch_Disable',
+            default=True
+        ))
+        if current_zone_id in (151, 152) and disabled_auto_search:
             return
 
         logger.info(f'Run auto search, question={question}, rescan={rescan}')
@@ -926,30 +933,13 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         if 'is_scanning_device' not in self._solved_map_event and grids and grids[0].is_scanning_device:
             grid = grids[0]
             logger.info(f'Found scanning device on {grid}')
-
-            # 检查是否开启研究装置交互
-            siren_research_enabled = False
-            try:
-                siren_research_enabled = bool(self.config.cross_get(
-                    keys='OpsiHazard1Leveling.OpsiHazard1Leveling.SirenResearch_Enable',
-                    default=False
-                ))
-            except Exception:
-                logger.warning('Failed to get SirenResearch config, disabled by default')
-                siren_research_enabled = False
-            
-            if not siren_research_enabled:
-                logger.info('SirenResearch disabled by config, skip scanning device')
-                self._solved_map_event.add('is_scanning_device')
-                return True
-                
             self.device.click(grid)
             with self.config.temporary(STORY_ALLOW_SKIP=False):
                 result = self.wait_until_walk_stable(
                     drop=drop, walk_out_of_step=False, confirm_timer=Timer(1.5, count=4))
             self.os_auto_search_run(drop=drop)
-            if not logger.check_log_contains(keyword='STORY_OPTION_1_OF_2', check_lines=100):
-                logger.info('log true')
+            if logger.check_log_contains(keyword='POPUP_CONFIRM_STORY_SKIP', check_lines=120):
+                logger.info('Confirmed scanning_device is handled')
                 self._handle_siren_bug_reinteract(drop=drop)
             if 'event' in result:
                 self._solved_map_event.add('is_scanning_device')
@@ -1272,11 +1262,18 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 keys='OpsiHazard1Leveling.OpsiHazard1Leveling.HandledDeviceCount', 
                 default=0
             ))
+            disabled_auto_search = bool(self.config.cross_get(
+            keys='OpsiHazard1Leveling.OpsiHazard1Leveling.BugZoneAutoSearch_Disable',
+            default=True
+            ))
         except Exception as e:
             return
 
         if not (siren_research_enable and siren_bug_enable and siren_bug_zone != 0):
             return
+
+        if not disabled_auto_search:
+            self.config.cross_set(keys='OpsiHazard1Leveling.OpsiHazard1Leveling.BugZoneAutoSearch_Disable', value=True)
 
         current_zone_id = self.zone.zone_id
         if current_zone_id not in (22, 44):

@@ -110,3 +110,10 @@ class OSCampaignRun(OSMapOperation):
             campaign.os_cross_month()
         except ActionPointLimit:
             campaign.os_cross_month_end()
+
+    def opsi_scanning_device_farming(self):
+        try:
+            campaign = self.load_campaign()
+            campaign.os_scanningdevice_farming()
+        except ActionPointLimit:
+            self.config.task_delay(server_update=True)

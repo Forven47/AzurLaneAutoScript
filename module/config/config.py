@@ -533,6 +533,7 @@ class AzurLaneConfig(ConfigUpdater, ManualConfig, GeneratedConfig, ConfigWatcher
                     # although it does not requires any AP to enter.
                     "OpsiArchive",
                     "OpsiMeowfficerFarming",
+                    "OpsiScanningDeviceFarming",
                 ]
             )
             if get_os_reset_remain() > 0:

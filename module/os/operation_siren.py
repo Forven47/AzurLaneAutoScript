@@ -7,6 +7,7 @@ from module.os.tasks.daily import OpsiDaily
 from module.os.tasks.explore import OpsiExplore
 from module.os.tasks.hazard_leveling import OpsiHazard1Leveling
 from module.os.tasks.meowfficer_farming import OpsiMeowfficerFarming
+from module.os.tasks.scanningdevice_farming import OpsiScanningDeviceFarming
 from module.os.tasks.month_boss import OpsiMonthBoss
 from module.os.tasks.obscure import OpsiObscure
 from module.os.tasks.shop import OpsiShop
@@ -18,6 +19,7 @@ class OperationSiren(
     OpsiDaily,
     OpsiShop,
     OpsiVoucher,
+    OpsiScanningDeviceFarming,
     OpsiMeowfficerFarming,
     OpsiHazard1Leveling,
     OpsiObscure,

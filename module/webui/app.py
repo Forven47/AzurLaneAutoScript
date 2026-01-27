@@ -184,7 +184,8 @@ class AlasGUI(Frame):
 
     @use_scope("aside_instance")
     def set_aside_status(self) -> None:
-        flag = True       
+        flag = True
+
         def update(name, seq):
             with use_scope(f"alas-instance-{seq}", clear=True):
                 icon_html = Icon.RUN
@@ -197,7 +198,7 @@ class AlasGUI(Frame):
                     onclick=self.ui_alas,
                 )
             return rendered_state
-        
+
         if not len(self.rendered_cache) or self.load_home:
             # Reload when add/delete new instance | first start app.py | go to HomePage (HomePage load call force reload)
             flag = False
@@ -220,7 +221,7 @@ class AlasGUI(Frame):
             # Redraw lost focus, now focus on aside button
             aside_name = get_localstorage("aside")
             self.active_button("aside", aside_name)
-        
+
         return
 
     @use_scope("header_status")
@@ -1638,8 +1639,8 @@ class AlasGUI(Frame):
                     "--loading-border-fill--"
                 )
                 if (
-                    State.deploy_config.EnableRemoteAccess
-                    and State.deploy_config.Password
+                        State.deploy_config.EnableRemoteAccess
+                        and State.deploy_config.Password
                 ):
                     put_text(t("Gui.Remote.NotRunning"), scope="remote_state")
                 else:
@@ -2334,8 +2335,8 @@ def startup():
     if State.deploy_config.StartOcrServer:
         start_ocr_server_process(State.deploy_config.OcrServerPort)
     if (
-        State.deploy_config.EnableRemoteAccess
-        and State.deploy_config.Password is not None
+            State.deploy_config.EnableRemoteAccess
+            and State.deploy_config.Password is not None
     ):
         task_handler.add(RemoteAccess.keep_ssh_alive(), 60)
 

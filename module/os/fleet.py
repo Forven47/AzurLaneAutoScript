@@ -9,7 +9,6 @@ from module.base.timer import Timer
 from module.base.utils import point_limit
 from module.config.utils import dict_to_kv
 from module.exception import MapWalkError
-from module.exercise.assets import QUIT_RECONFIRM
 from module.handler.assets import MAINTENANCE_ANNOUNCE, POPUP_CONFIRM
 from module.logger import logger
 from module.map.fleet import Fleet
@@ -238,12 +237,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
         logger.hr('Wait until camera stable')
         record = None
         confirm_timer = Timer(0.6, count=2).start()
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
-
+        for _ in self.loop(skip_first=skip_first_screenshot):
             self.update_os()
             current = self.view.backend.homo_loca
             logger.attr('homo_loca', current)
@@ -289,12 +283,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
         clicked_story = False
 
         confirm_timer.reset()
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
-
+        for _ in self.loop(skip_first=skip_first_screenshot):
             # Map event
             event = self.handle_map_event(drop=drop)
             if event:
@@ -665,7 +654,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
         button = Button(area=area, color=(), button=area, name='BOSS_LEAVE')
         return button
 
-    def boss_leave(self, skip_first_screenshot=True):
+    def boss_leave(self):
         """
         Pages:
             in: is_in_map(), or combat_appear()
@@ -677,12 +666,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
 
         click_timer = Timer(3)
         pause_interval = Timer(0.5, count=1)
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
-
+        for _ in self.loop():
             # End
             if self.is_in_map():
                 self.predict_radar()
@@ -707,7 +691,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                 self.interval_reset(MAINTENANCE_ANNOUNCE)
                 pause_interval.reset()
                 continue
-            if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
+            if self.handle_combat_quit_reconfirm():
                 self.interval_reset(MAINTENANCE_ANNOUNCE)
                 pause_interval.reset()
                 continue
@@ -955,28 +939,28 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
 
             if device_operate:
                 if (self.appear(POPUP_CONFIRM, offset=(20, 20)) or self._story_option_buttons_2()) and not operate_handled:
-                    operate_timer.reset()
-                    while not operate_timer.reached():
+                    confirm_timer.reset()
+                    if self.select_story_option_by_index(target_index=1, options_count=3):
+                        confirm_timer.reset()
+                    while not confirm_timer.reached():
+                        self.device.screenshot()
+                    if _click_story_confirm_button():
+                        confirm_timer.reset()
+                    while not confirm_timer.reached():
                         self.device.screenshot()
                     if self.select_story_option_by_index(target_index=1, options_count=3):
-                        _click_story_confirm_button()
-                        operate_timer.reset()
-                    while not operate_timer.reached():
+                        confirm_timer.reset()
+                    while not confirm_timer.reached():
                         self.device.screenshot()
-                    if self.select_story_option_by_index(target_index=1, options_count=3):
-                        _click_story_confirm_button()
-                        operate_timer.reset()
-                    while not operate_timer.reached():
+                    if _click_story_confirm_button():
+                        confirm_timer.reset()
+                    while not confirm_timer.reached():
                         self.device.screenshot()
                     if self.select_story_option_by_index(target_index=2, options_count=3):
                         logger.info('click completed')
                         operate_handled = True
-                        operate_timer.reset()
-                    while not operate_timer.reached():
-                        self.device.screenshot()
                     self.device.click(CLICK_SAFE_AREA)
-                    result.add('siren_device')
-
+                    result.add('scanning_device')
 
                 event = self.handle_map_event(drop=drop)
                 if event:

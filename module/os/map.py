@@ -5,11 +5,10 @@ import inflection
 from module.base.timer import Timer
 from module.config.utils import get_os_reset_remain
 from module.exception import CampaignEnd, GameTooManyClickError, MapWalkError, RequestHumanTakeover, ScriptError
-from module.exercise.assets import QUIT_RECONFIRM
 from module.handler.login import LoginHandler, MAINTENANCE_ANNOUNCE
 from module.logger import logger
 from module.map.map import Map
-from module.os.assets import FLEET_EMP_DEBUFF, MAP_GOTO_GLOBE_FOG, FLEET_CHOOSE
+from module.os.assets import FLEET_EMP_DEBUFF, MAP_GOTO_GLOBE_FOG
 from module.os.fleet import OSFleet
 from module.os.globe_camera import GlobeCamera
 from module.os.globe_operation import RewardUncollectedError
@@ -549,12 +548,11 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         data = self._load_cl1_monthly()
         return int(data.get(key, 0))
 
-    def os_auto_search_daemon(self, drop=None, strategic=False, interrupt=None, skip_first_screenshot=True):
+    def os_auto_search_daemon(self, drop=None, strategic=False):
         """
         Args:
             drop (DropRecord):
             strategic (bool): True if running in strategic search
-            skip_first_screenshot:
 
         Returns:
             int: Number of finished battle
@@ -578,12 +576,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         finished_combat = 0
         died_timer = Timer(1.5, count=3)
         self.hp_reset()
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
-
+        for _ in self.loop():
             # End
             if not unlock_checked and unlock_check_timer.reached():
                 logger.critical('Unable to use auto search in current zone')
@@ -638,7 +631,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
 
         return finished_combat
 
-    def interrupt_auto_search(self, skip_first_screenshot=True):
+    def interrupt_auto_search(self):
         """
         Raises:
             TaskEnd: If auto search interrupted
@@ -651,12 +644,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         is_loading = False
         pause_interval = Timer(0.5, count=1)
         in_main_timer = Timer(3, count=6)
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
-
+        for _ in self.loop():
             # End
             if self.is_in_main():
                 logger.info('Auto search interrupted')
@@ -680,7 +668,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 pause_interval.reset()
                 in_main_timer.reset()
                 continue
-            if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
+            if self.handle_combat_quit_reconfirm():
                 self.interval_reset(MAINTENANCE_ANNOUNCE)
                 pause_interval.reset()
                 in_main_timer.reset()
@@ -725,7 +713,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             backup = self.config.temporary(Campaign_UseAutoSearch=True)
             try:
                 if strategic:
-                    self.strategic_search_start(skip_first_screenshot=True)
+                    self.strategic_search_start()
                 combat = self.os_auto_search_daemon(drop=drop, strategic=strategic)
                 finished_combat += combat
             except CampaignEnd:
@@ -1027,6 +1015,8 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
         if self.zone.is_port:
             logger.info('Current zone is a port, do not need rescan')
             return False
+        #if self.is_cl1_enabled and not self.config.is_task_enabled('OpsiMeowfficerFarming'):
+        #    return False
 
         for _ in range(5):
             if not self._solved_fleet_mechanism:
@@ -1393,12 +1383,12 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                             pause_interval.reset()
                             continue
                     
-                    if self.handle_combat_quit(offset=(20, 20), interval=0):
+                    if self.handle_combat_quit():
                         self.interval_reset(MAINTENANCE_ANNOUNCE)
                         pause_interval.reset()
                         continue
-                    
-                    if self.appear_then_click(QUIT_RECONFIRM, offset=True, interval=5):
+
+                    if self.handle_combat_quit_reconfirm():
                         self.interval_reset(MAINTENANCE_ANNOUNCE)
                         pause_interval.reset()
                         combat_quit = True

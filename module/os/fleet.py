@@ -931,11 +931,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
             return False
 
         confirm_timer.reset()
-        while 1:
-            if skip_first_screenshot:
-                skip_first_screenshot = False
-            else:
-                self.device.screenshot()
+        for _ in self.loop(skip_first=skip_first_screenshot):
 
             if device_operate:
                 if (self.appear(POPUP_CONFIRM, offset=(20, 20)) or self._story_option_buttons_2()) and not operate_handled:
@@ -958,12 +954,12 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                         self.device.screenshot()
                     if self.select_story_option_by_index(target_index=2, options_count=3):
                         logger.info('click completed')
-                        operate_handled = True
+                    operate_handled = True
                     self.device.click(CLICK_SAFE_AREA)
                     result.add('scanning_device')
 
                 event = self.handle_map_event(drop=drop)
-                if event:
+                if event and operate_handled:
                     confirm_timer.reset()
                     result.add('event')
                     if event == 'story_skip':

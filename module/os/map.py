@@ -714,6 +714,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             try:
                 if strategic:
                     self.strategic_search_start()
+                    self.strategic_search_start()
                 combat = self.os_auto_search_daemon(drop=drop, strategic=strategic)
                 finished_combat += combat
             except CampaignEnd:

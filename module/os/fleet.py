@@ -954,8 +954,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                         self.device.screenshot()
                     if self.select_story_option_by_index(target_index=2, options_count=3):
                         logger.info('click completed')
-                    operate_handled = True
-                    self.device.click(CLICK_SAFE_AREA)
+                        operate_handled = True
                     result.add('scanning_device')
 
                 event = self.handle_map_event(drop=drop)

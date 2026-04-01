@@ -190,8 +190,8 @@ class AlasGUI(Frame):
             with use_scope(f"alas-instance-{seq}", clear=True):
                 icon_html = Icon.RUN
                 rendered_state = ProcessManager.get_manager(inst).state
-                if rendered_state == 1 and self.af_flag:
-                    icon_html = icon_html[:31] + ' anim-rotate' + icon_html[31:]
+                #if rendered_state == 1 and self.af_flag:
+                #    icon_html = icon_html[:31] + ' anim-rotate' + icon_html[31:]
                 put_icon_buttons(
                     icon_html,
                     buttons=[{"label": name, "value": name, "color": "aside"}],

@@ -29,7 +29,7 @@ class CampaignBase(CampaignBase_):
                 self.ui_click(EVENT_20201126_DETAIL_WHITE, check_button=EVENT_20201126_DETAIL_CHECK)
             else:
                 self.ui_click(EVENT_20201126_DETAIL, check_button=EVENT_20201126_DETAIL_CHECK)
-            self.ui_click(EVENT_20201126_ENTRANCE, check_button=EVENT_20201126_PT_ICON, 
+            self.ui_click(EVENT_20201126_ENTRANCE, check_button=EVENT_20201126_PT_ICON,
                           appear_button=EVENT_20201126_DETAIL_CHECK, offset=(40, 20))
             return True
 

@@ -778,7 +778,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
             elif 'event' in result and grid.is_scanning_device:
                 self._solved_map_event.add('is_scanning_device')
                 self.os_auto_search_run(drop=drop)
-                if logger.check_log_contains(keyword='POPUP_CONFIRM_STORY_SKIP', check_lines=120):
+                if logger.check_log_contains(keyword='STORY_OPTION_4_OF_5', check_lines=120):
                     logger.info('Confirmed scanning_device is handled')
                     self._handle_siren_bug_reinteract(drop=drop)
                 return True
@@ -926,7 +926,7 @@ class OSMap(OSFleet, Map, GlobeCamera, StrategicSearchHandler):
                 result = self.wait_until_walk_stable(
                     drop=drop, walk_out_of_step=False, confirm_timer=Timer(1.5, count=4))
             self.os_auto_search_run(drop=drop)
-            if logger.check_log_contains(keyword='POPUP_CONFIRM_STORY_SKIP', check_lines=120):
+            if logger.check_log_contains(keyword='STORY_OPTION_4_OF_5', check_lines=120):
                 logger.info('Confirmed scanning_device is handled')
                 self._handle_siren_bug_reinteract(drop=drop)
             if 'event' in result:

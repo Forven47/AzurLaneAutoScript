@@ -949,7 +949,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
             if device_operate:
                 if (self.appear(POPUP_CONFIRM, offset=(20, 20)) or self._story_option_buttons_2()) and not operate_handled:
                     confirm_timer.reset()
-                    if self.select_story_option_by_index(target_index=1, options_count=3):
+                    if self.select_story_option_by_index(target_index=1, options_count=5):
                         confirm_timer.reset()
                     while not confirm_timer.reached():
                         self.device.screenshot()
@@ -957,7 +957,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                         confirm_timer.reset()
                     while not confirm_timer.reached():
                         self.device.screenshot()
-                    if self.select_story_option_by_index(target_index=1, options_count=3):
+                    if self.select_story_option_by_index(target_index=1, options_count=5):
                         confirm_timer.reset()
                     while not confirm_timer.reached():
                         self.device.screenshot()
@@ -965,7 +965,7 @@ class OSFleet(OSCamera, Combat, Fleet, OSAsh):
                         confirm_timer.reset()
                     while not confirm_timer.reached():
                         self.device.screenshot()
-                    if self.select_story_option_by_index(target_index=2, options_count=3):
+                    if self.select_story_option_by_index(target_index=4, options_count=5):
                         logger.info('click completed')
                         operate_handled = True
                     result.add('scanning_device')
